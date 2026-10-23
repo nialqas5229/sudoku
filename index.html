@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta name="description" content="Sudoku — Play & Think. Modern offline-capable logic puzzle with 4x4, 6x6 & 9x9 grids, Daily Challenges, Smart Hints, and Achievements." />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <title>Sudoku — Play & Think</title>
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">9</div>
+        <div>
+          <h1>Sudoku</h1>
+          <p class="subtitle">A little logic. A little focus.</p>
+        </div>
+      </div>
+      <nav class="top-actions" aria-label="Game navigation">
+        <button type="button" class="btn" id="dailyBtn" title="Play today's Daily Challenge">
+          <svg class="ui-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span>Daily</span>
+        </button>
+        <button type="button" class="btn primary" id="newBtn" title="Configure a new puzzle">
+          <svg class="ui-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span>New Game</span>
+        </button>
+        <button type="button" class="btn" id="statsBtn" title="Statistics and Achievements">
+          <svg class="ui-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+          <span>Stats</span>
+        </button>
+        <button type="button" class="btn" id="settingsBtn" title="Theme and Gameplay Settings">
+          <svg class="ui-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+          <span>Settings</span>
+        </button>
+        <button type="button" class="btn" id="helpBtn" title="How to play and shortcuts">
+          <svg class="ui-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span>Guide</span>
+        </button>
+      </nav>
+    </header>
+
+    <main class="layout">
+      <section class="panel" aria-label="Sudoku Board Area">
+        <div class="board-header-bar">
+          <div class="badge-group">
+            <span class="pill-badge" id="modePill">9×9 · Easy</span>
+            <span class="pill-badge daily" id="dailyPill" style="display:none;">Daily</span>
+          </div>
+          <button type="button" class="pill-badge seed-btn" id="seedPill" title="Click to copy puzzle seed">
+            <svg class="ui-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
+            <span>SDK</span>
+          </button>
+        </div>
+
+        <div class="board-stage">
+          <div class="board" id="board" role="grid" aria-label="Sudoku board"></div>
+          <div class="board-overlay" id="boardOverlay" role="region" aria-live="polite"></div>
+        </div>
+
+        <div class="hint-banner" id="hintBanner" role="status" aria-live="polite"></div>
+        <p class="board-status" id="boardStatus" aria-live="polite">Choose a cell, then choose a number.</p>
+
+        <div class="keypad-bar">
+          <span>Tap a digit to enter · Long-press for pencil note</span>
+          <button type="button" class="btn" id="quickFillBtn" aria-pressed="false" style="padding:4px 9px;font-size:11.5px;">
+            <svg class="ui-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span>Quick-Fill: Off</span>
+          </button>
+        </div>
+
+        <div class="numbers" id="numbers" role="group" aria-label="Number keypad"></div>
+
+        <div class="tools">
+          <button type="button" class="btn" id="eraseBtn">
+            <svg class="ui-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+            <span>Erase</span>
+          </button>
+          <button type="button" class="btn" id="notesBtn" aria-pressed="false">
+            <svg class="ui-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+            <span>Notes: Off</span>
+          </button>
+          <button type="button" class="btn" id="autoNotesBtn" title="Fill all valid candidate notes">
+            <svg class="ui-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3Z"/><path d="M5 3v4"/><path d="M3 5h4"/></svg>
+            <span>Auto-Notes</span>
+          </button>
+          <button type="button" class="btn" id="undoBtn" disabled>
+            <svg class="ui-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+            <span>Undo</span>
+          </button>
+          <button type="button" class="btn" id="redoBtn" disabled>
+            <svg class="ui-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg>
+            <span>Redo</span>
+          </button>
+        </div>
+      </section>
+
+      <aside class="panel sidebar" aria-label="Game Controls and Stats">
+        <h2 class="section-title">Game Controls</h2>
+
+        <div class="timer-card" id="timerCard">
+          <div>
+            <div class="timer-label">Time Left / Elapsed</div>
+            <div class="timer" id="timer">00:00</div>
+          </div>
+          <span id="timerState" class="timer-label">Stopwatch</span>
+        </div>
+
+        <label class="field-label" for="timeSelect">Quick Time Limit</label>
+        <select id="timeSelect" class="select-input">
+          <option value="0">No time limit (Stopwatch)</option>
+          <option value="180">3 minutes</option>
+          <option value="300">5 minutes</option>
+          <option value="600">10 minutes</option>
+        </select>
+
+        <label class="field-label" for="difficulty" style="margin-top:10px;">Quick Difficulty</label>
+        <select id="difficulty" class="select-input">
+          <option value="beginner">Beginner</option>
+          <option value="easy">Easy</option>
+          <option value="medium">Medium</option>
+          <option value="hard">Hard</option>
+          <option value="expert">Expert</option>
+        </select>
+
+        <div class="action-stack" style="margin-top:12px;">
+          <button type="button" class="btn primary" id="startBtn">
+            <svg class="ui-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            <span>Quick Restart</span>
+          </button>
+          <button type="button" class="btn" id="pauseBtn">
+            <svg class="ui-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor"/></svg>
+            <span>Pause</span>
+          </button>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-box"><b id="filledStat">0/81</b><span>Cells Filled</span></div>
+          <div class="stat-box"><b id="mistakeStat">0</b><span>Mistakes</span></div>
+          <div class="stat-box"><b id="hintStat">3</b><span>Hints Left</span></div>
+        </div>
+
+        <div class="action-stack">
+          <button type="button" class="btn" id="hintBtn">
+            <svg class="ui-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+            <span>Smart Hint (3)</span>
+          </button>
+          <button type="button" class="btn" id="checkBtn">
+            <svg class="ui-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span>Check Board</span>
+          </button>
+        </div>
+
+        <div class="message-box" id="message" role="status" aria-live="polite"></div>
+
+        <p class="sidebar-hint">
+          <b>Two-Stage Smart Hints:</b> First tap highlights the logical next cell and explains the technique (<i>Naked Single</i>, <i>Hidden Single</i>); second tap fills the digit.
+        </p>
+        <p class="sidebar-hint">
+          <b>Shortcuts:</b> <b>1–9</b> enter digit · <b>N</b> toggle notes · <b>H</b> hint · <b>P</b> pause · <b>Backspace</b> erase · <b>Ctrl/Cmd+Z</b> undo.
+        </p>
+      </aside>
+    </main>
+
+    <footer class="app-footer">
+      Sudoku v2.0 · Works offline as an installable PWA · Progress autosaved locally in your browser
+    </footer>
+  </div>
+
+  <!-- New Game / Seed / Import Modal -->
+  <div class="modal-backdrop" id="newGameModal" role="dialog" aria-modal="true" aria-labelledby="newGameModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="newGameModalTitle">New Puzzle Setup</h2>
+        <button type="button" class="btn" data-close-modal aria-label="Close">
+          <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div id="newGameModalBody"></div>
+    </div>
+  </div>
+
+  <!-- Win Celebration Modal -->
+  <div class="modal-backdrop" id="winModal" role="dialog" aria-modal="true" aria-labelledby="winModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="winModalTitle">Puzzle Solved</h2>
+        <button type="button" class="btn" data-close-modal aria-label="Close">
+          <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div id="winModalBody"></div>
+    </div>
+  </div>
+
+  <!-- Statistics & Achievements Modal -->
+  <div class="modal-backdrop" id="statsModal" role="dialog" aria-modal="true" aria-labelledby="statsModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="statsModalTitle">Statistics & Achievements</h2>
+        <button type="button" class="btn" data-close-modal aria-label="Close">
+          <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div id="statsModalBody"></div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-backdrop" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="settingsModalTitle">Settings & Themes</h2>
+        <button type="button" class="btn" data-close-modal aria-label="Close">
+          <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div id="settingsModalBody"></div>
+    </div>
+  </div>
+
+  <!-- How to Play / Tutorial Modal -->
+  <div class="modal-backdrop" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="helpModalTitle">How to Play Sudoku</h2>
+        <button type="button" class="btn" data-close-modal aria-label="Close">
+          <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div style="font-size:13.5px;line-height:1.6;color:var(--ink-secondary);">
+        <p><b>Core Rule:</b> Fill every row, column, and bold-bordered box with digits <b>1–9</b> (or <b>1–4</b> in 4×4 Mini, <b>1–6</b> in 6×6 Midi) without repeating any digit in the same row, column, or box.</p>
+        <p><b>3×3 Pencil Notes:</b> Toggle <b>Notes</b> (or press <b>N</b> / long-press any keypad button on mobile) to jot down candidate digits inside a cell's mini-grid. Placing a valid digit automatically clears that note from peer cells.</p>
+        <p><b>Two-Stage Smart Hints:</b> Tapping <b>Smart Hint</b> once highlights the best target cell and explains the logical technique (such as a <i>Naked Single</i> or <i>Hidden Single</i>) without spending a hint yet. Tap it a second time to fill the cell.</p>
+        <p><b>Quick-Fill Mode:</b> Turn on <b>Quick-Fill</b> to lock a digit on the keypad and rapidly tap multiple cells to place it.</p>
+        <p><b>Share & Seeds:</b> Click the <b>Seed</b> badge above the board to copy the puzzle seed and challenge a friend to the exact same board via <b>New Game</b>.</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

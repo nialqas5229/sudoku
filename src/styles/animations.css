@@ -1,0 +1,57 @@
+@keyframes cellPop {
+  0% {
+    transform: scale(0.84);
+  }
+  60% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes unitFlash {
+  0% {
+    background-color: var(--primary-soft);
+  }
+  50% {
+    background-color: var(--success-bg);
+  }
+  100% {
+    background-color: var(--cell-bg);
+  }
+}
+
+@keyframes conflictShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+.cell.pop-anim {
+  animation: cellPop 0.18s ease-out;
+}
+
+.cell.unit-complete-anim {
+  animation: unitFlash 0.65s ease-in-out;
+}
+
+.cell.shake-anim {
+  animation: conflictShake 0.24s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

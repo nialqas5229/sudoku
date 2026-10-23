@@ -1,0 +1,233 @@
+.board-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.badge-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--panel-alt);
+  border: 1px solid var(--panel-border);
+  color: var(--ink-secondary);
+}
+
+.pill-badge.daily {
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+  border-color: transparent;
+}
+
+.pill-badge.seed-btn {
+  cursor: pointer;
+}
+.pill-badge.seed-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.board-stage {
+  position: relative;
+  width: 100%;
+  max-width: 540px;
+  margin: 0 auto;
+}
+
+.board {
+  display: grid;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border: 2.5px solid var(--thick);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--cell-bg);
+  box-shadow: var(--shadow-sm);
+}
+
+.board[data-size="4"] {
+  grid-template-columns: repeat(4, 1fr);
+}
+.board[data-size="6"] {
+  grid-template-columns: repeat(6, 1fr);
+}
+.board[data-size="9"] {
+  grid-template-columns: repeat(9, 1fr);
+}
+
+.board-row {
+  display: contents;
+}
+
+.cell {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--cell-bg);
+  color: var(--cell-player-ink);
+  font-weight: 700;
+  font-size: calc(clamp(16px, 4.2vw, 27px) * var(--font-scale));
+  padding: 0;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.board[data-size="4"] .cell {
+  font-size: calc(clamp(22px, 6vw, 38px) * var(--font-scale));
+}
+.board[data-size="6"] .cell {
+  font-size: calc(clamp(19px, 5vw, 32px) * var(--font-scale));
+}
+
+.cell.box-right {
+  border-right: 2.5px solid var(--thick);
+}
+.cell.box-bottom {
+  border-bottom: 2.5px solid var(--thick);
+}
+.cell.last-col {
+  border-right: 0;
+}
+.cell.last-row {
+  border-bottom: 0;
+}
+
+.cell.fixed {
+  background: var(--cell-fixed-bg);
+  color: var(--cell-fixed-ink);
+  font-weight: 800;
+}
+
+.cell.peer {
+  background: var(--cell-peer-bg);
+}
+
+.cell.same-digit {
+  background: var(--cell-same-bg);
+  font-weight: 800;
+}
+
+.cell.selected {
+  background: var(--cell-selected-bg);
+  box-shadow: inset 0 0 0 2.5px var(--cell-selected-ring);
+  z-index: 2;
+}
+
+.cell.hint-target {
+  background: var(--cell-hint-bg);
+  box-shadow: inset 0 0 0 3px var(--cell-hint-ring);
+  z-index: 3;
+}
+
+.cell.conflict {
+  background: var(--error-bg);
+  color: var(--error-ink);
+}
+
+/* Non-color conflict badge for accessibility & colorblind clarity */
+.cell.conflict::after {
+  content: '!';
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--error-ink);
+}
+
+.cell:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: -3px;
+  z-index: 4;
+}
+
+/* Positional 3x3 (or 2x2 / 2x3) mini-grid for pencil notes */
+.notes-grid {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  padding: 2px;
+  pointer-events: none;
+}
+
+.board[data-size="9"] .notes-grid {
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+}
+.board[data-size="6"] .notes-grid {
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+}
+.board[data-size="4"] .notes-grid {
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+}
+
+.note-item {
+  display: grid;
+  place-items: center;
+  font-size: calc(clamp(8px, 1.35vw, 11px) * var(--font-scale));
+  font-weight: 600;
+  color: var(--muted);
+  line-height: 1;
+}
+
+.note-item.active-note {
+  color: var(--primary);
+  font-weight: 800;
+}
+
+/* Pause & Ended Board Overlay */
+.board-overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  text-align: center;
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 8px;
+  color: #ffffff;
+  z-index: 10;
+}
+
+.board-overlay.visible {
+  display: flex;
+}
+
+.board-overlay h3 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.board-overlay p {
+  margin: 0;
+  font-size: 14px;
+  color: #cbd5e1;
+  max-width: 280px;
+}

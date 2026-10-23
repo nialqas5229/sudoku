@@ -1,0 +1,25 @@
+{
+  "name": "sudoku-play-and-think",
+  "private": true,
+  "version": "2.0.0",
+  "description": "Modern, offline-capable Sudoku PWA built with Vanilla TypeScript and Vite.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "node scripts/run-tests.mjs"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.8.2",
+    "vite": "^6.2.6"
+  },
+  "overrides": {
+    "esbuild": ">=0.25.2",
+    "rollup": ">=4.36.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

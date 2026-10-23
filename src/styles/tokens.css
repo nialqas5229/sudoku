@@ -1,0 +1,160 @@
+:root,
+[data-theme="light"] {
+  --bg: #f1f5f9;
+  --bg-accent: radial-gradient(circle at 15% 10%, #e0e7ff 0%, transparent 45%),
+               radial-gradient(circle at 85% 90%, #dbeafe 0%, transparent 45%);
+  --panel: #ffffff;
+  --panel-alt: #f8fafc;
+  --panel-border: #e2e8f0;
+  --ink: #0f172a;
+  --ink-secondary: #334155;
+  --muted: #64748b;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-soft: #dbeafe;
+  --primary-ink: #ffffff;
+  --line: #cbd5e1;
+  --thick: #334155;
+  --cell-bg: #ffffff;
+  --cell-fixed-bg: #f1f5f9;
+  --cell-fixed-ink: #0f172a;
+  --cell-player-ink: #1d4ed8;
+  --cell-peer-bg: #eff6ff;
+  --cell-same-bg: #bfdbfe;
+  --cell-selected-bg: #dbeafe;
+  --cell-selected-ring: #2563eb;
+  --cell-hint-bg: #fef3c7;
+  --cell-hint-ring: #d97706;
+  --error-bg: #fee2e2;
+  --error-ink: #b91c1c;
+  --error-border: #ef4444;
+  --success-bg: #dcfce7;
+  --success-ink: #15803d;
+  --warn-bg: #fef3c7;
+  --warn-ink: #b45309;
+  --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 20px 45px rgba(15, 23, 42, 0.16);
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --font-scale: 1;
+}
+
+[data-theme="dark"] {
+  --bg: #0b1120;
+  --bg-accent: radial-gradient(circle at 15% 10%, #1e293b 0%, transparent 45%),
+               radial-gradient(circle at 85% 90%, #172554 0%, transparent 45%);
+  --panel: #111827;
+  --panel-alt: #1e293b;
+  --panel-border: #1f2937;
+  --ink: #f8fafc;
+  --ink-secondary: #cbd5e1;
+  --muted: #94a3b8;
+  --primary: #3b82f6;
+  --primary-hover: #60a5fa;
+  --primary-soft: #1e3a8a;
+  --primary-ink: #ffffff;
+  --line: #334155;
+  --thick: #94a3b8;
+  --cell-bg: #111827;
+  --cell-fixed-bg: #1e293b;
+  --cell-fixed-ink: #f8fafc;
+  --cell-player-ink: #60a5fa;
+  --cell-peer-bg: #172554;
+  --cell-same-bg: #1e40af;
+  --cell-selected-bg: #1d4ed8;
+  --cell-selected-ring: #60a5fa;
+  --cell-hint-bg: #451a03;
+  --cell-hint-ring: #f59e0b;
+  --error-bg: #450a0a;
+  --error-ink: #fca5a5;
+  --error-border: #f87171;
+  --success-bg: #052e16;
+  --success-ink: #86efac;
+  --warn-bg: #451a03;
+  --warn-ink: #fcd34d;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.65);
+}
+
+/* Okabe-Ito Color-Blind Safe Theme */
+[data-theme="colorblind"] {
+  --bg: #f5f7fa;
+  --bg-accent: none;
+  --panel: #ffffff;
+  --panel-alt: #eef2f6;
+  --panel-border: #cbd5e1;
+  --ink: #111827;
+  --ink-secondary: #1f2937;
+  --muted: #4b5563;
+  --primary: #0072b2;
+  --primary-hover: #005b8e;
+  --primary-soft: #d9edf7;
+  --primary-ink: #ffffff;
+  --line: #94a3b8;
+  --thick: #111827;
+  --cell-bg: #ffffff;
+  --cell-fixed-bg: #e5e7eb;
+  --cell-fixed-ink: #000000;
+  --cell-player-ink: #0072b2;
+  --cell-peer-bg: #f0f7fb;
+  --cell-same-bg: #cce5ff;
+  --cell-selected-bg: #b3d7ff;
+  --cell-selected-ring: #0072b2;
+  --cell-hint-bg: #fff3cd;
+  --cell-hint-ring: #e69f00;
+  --error-bg: #fde8d7;
+  --error-ink: #d55e00;
+  --error-border: #d55e00;
+  --success-bg: #d4edda;
+  --success-ink: #009e73;
+  --warn-bg: #fff3cd;
+  --warn-ink: #b45309;
+}
+
+/* High-Contrast Theme (WCAG AAA) */
+[data-theme="high-contrast"] {
+  --bg: #000000;
+  --bg-accent: none;
+  --panel: #000000;
+  --panel-alt: #121212;
+  --panel-border: #ffffff;
+  --ink: #ffffff;
+  --ink-secondary: #eeeeee;
+  --muted: #cccccc;
+  --primary: #ffff00;
+  --primary-hover: #ffd700;
+  --primary-soft: #333300;
+  --primary-ink: #000000;
+  --line: #666666;
+  --thick: #ffffff;
+  --cell-bg: #000000;
+  --cell-fixed-bg: #1f1f1f;
+  --cell-fixed-ink: #ffffff;
+  --cell-player-ink: #00ffff;
+  --cell-peer-bg: #141414;
+  --cell-same-bg: #333300;
+  --cell-selected-bg: #262600;
+  --cell-selected-ring: #ffff00;
+  --cell-hint-bg: #332200;
+  --cell-hint-ring: #ffaa00;
+  --error-bg: #4d0000;
+  --error-ink: #ff6666;
+  --error-border: #ff3333;
+  --success-bg: #003311;
+  --success-ink: #00ff66;
+  --warn-bg: #332200;
+  --warn-ink: #ffcc00;
+}
+
+[data-font-size="small"] {
+  --font-scale: 0.9;
+}
+[data-font-size="medium"] {
+  --font-scale: 1;
+}
+[data-font-size="large"] {
+  --font-scale: 1.14;
+}
