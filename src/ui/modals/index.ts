@@ -353,6 +353,7 @@ export function openSettingsModal(
       autoClearNotes: (document.getElementById('setAutoClearNotes') as HTMLInputElement).checked,
       highlightPeers: (document.getElementById('setHighlightPeers') as HTMLInputElement).checked,
       highlightSameDigit: (document.getElementById('setHighlightSame') as HTMLInputElement).checked,
+      showBlockedCells: settings.showBlockedCells,
       showTimer: (document.getElementById('setShowTimer') as HTMLInputElement).checked,
       soundEnabled: (document.getElementById('setSound') as HTMLInputElement).checked,
       hapticsEnabled: (document.getElementById('setHaptics') as HTMLInputElement).checked,

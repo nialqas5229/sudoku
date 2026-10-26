@@ -106,8 +106,27 @@ export class BoardView {
     const meta = getGridMeta(state.size);
     const conflicts = getAllConflictingCells(state.board, state.size);
     const selected = state.selected;
+    // Blocking highlights must never replace the selected cell's normal blue area.
+    // Preserve the user's peer-highlight preference when blocking is disabled.
     const selectedPeers =
-      selected >= 0 && settings.highlightPeers ? new Set(meta.peers[selected]) : new Set<number>();
+      selected >= 0 && (settings.highlightPeers || settings.showBlockedCells)
+        ? new Set(meta.peers[selected])
+        : new Set<number>();
+
+    const blueCells = new Set(selectedPeers);
+    if (selected >= 0) blueCells.add(selected);
+
+    const blockedCells = new Set<number>();
+    if (settings.showBlockedCells && selected >= 0 && state.board[selected] > 0) {
+      const digit = state.board[selected];
+      for (let i = 0; i < meta.totalCells; i++) {
+        if (i === selected || state.board[i] !== digit) continue;
+        if (!blueCells.has(i)) blockedCells.add(i);
+        for (const peer of meta.peers[i]) {
+          if (!blueCells.has(peer)) blockedCells.add(peer);
+        }
+      }
+    }
 
     const highlightDigit =
       state.activeDigit ||
@@ -125,6 +144,7 @@ export class BoardView {
       const isFixed = state.fixed[i];
       const isSelected = selected === i;
       const isPeer = selectedPeers.has(i);
+      const isBlockHighlight = blockedCells.has(i);
       const isSameDigit =
         settings.highlightSameDigit && highlightDigit !== null && val === highlightDigit;
       const isHintTarget = state.activeHint?.cellIndex === i;
@@ -137,6 +157,7 @@ export class BoardView {
       // Reset dynamic state classes while preserving structural border classes
       el.classList.toggle('fixed', isFixed);
       el.classList.toggle('peer', isPeer);
+      el.classList.toggle('block-highlight', isBlockHighlight);
       el.classList.toggle('same-digit', isSameDigit);
       el.classList.toggle('selected', isSelected);
       el.classList.toggle('hint-target', isHintTarget);

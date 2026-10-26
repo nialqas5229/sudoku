@@ -83,7 +83,7 @@ function renderAll(): void {
     () => openNewGameModal(state, startNewPuzzle)
   );
   keypadView.render(state);
-  renderControlsAndStats(state);
+  renderControlsAndStats(state, settings);
   gameTimer.render(state, settings.showTimer);
   renderHintBanner(state.activeHint, () => handleSmartHint());
 
@@ -537,6 +537,12 @@ function bootstrap(): void {
   document.getElementById('hintBtn')?.addEventListener('click', () => handleSmartHint());
   document.getElementById('checkBtn')?.addEventListener('click', () => handleCheckBoard());
   document.getElementById('pauseBtn')?.addEventListener('click', () => togglePause());
+
+  document.getElementById('showBlockedCellsBtn')?.addEventListener('click', () => {
+    settings.showBlockedCells = !settings.showBlockedCells;
+    saveSettings(settings);
+    renderAll();
+  });
 
   document.getElementById('startBtn')?.addEventListener('click', () => {
     const diffSelect = document.getElementById('difficulty') as HTMLSelectElement;

@@ -1,12 +1,13 @@
 import { DIFFICULTY_LABELS } from '../core/constants';
 import { GameState } from '../core/types';
 import { icon } from './icons';
+import { UserSettings } from '../services/settings';
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!);
 }
 
-export function renderControlsAndStats(state: GameState): void {
+export function renderControlsAndStats(state: GameState, settings: UserSettings): void {
   const totalCells = state.size * state.size;
   const filledCount = state.board.filter(Boolean).length;
 
@@ -65,6 +66,13 @@ export function renderControlsAndStats(state: GameState): void {
   setBtnDisabled('hintBtn', locked || purist || state.hintsLeft <= 0);
   setBtnDisabled('checkBtn', locked);
   setBtnDisabled('pauseBtn', !state.started || state.ended);
+
+  const blockedCellsBtn = document.getElementById('showBlockedCellsBtn');
+  if (blockedCellsBtn) {
+    blockedCellsBtn.setAttribute('aria-pressed', String(settings.showBlockedCells));
+    blockedCellsBtn.setAttribute('aria-label', `Show blocked cells ${settings.showBlockedCells ? 'on' : 'off'}`);
+    blockedCellsBtn.innerHTML = `<span class="switch-track" aria-hidden="true"><span></span></span><span>Show blocked cells</span>`;
+  }
 
   const notesBtn = document.getElementById('notesBtn');
   if (notesBtn) {

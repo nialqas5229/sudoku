@@ -121,6 +121,9 @@
   background: var(--cell-peer-bg);
 }
 
+.cell.block-highlight { background: var(--cell-block-bg); }
+.cell.same-digit.block-highlight { background: var(--cell-block-same-bg); }
+
 .cell.same-digit {
   background: var(--cell-same-bg);
   font-weight: 800;
@@ -131,6 +134,7 @@
   box-shadow: inset 0 0 0 2.5px var(--cell-selected-ring);
   z-index: 2;
 }
+
 
 .cell.hint-target {
   background: var(--cell-hint-bg);

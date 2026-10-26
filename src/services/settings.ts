@@ -9,6 +9,7 @@ export interface UserSettings {
   autoClearNotes: boolean;
   highlightPeers: boolean;
   highlightSameDigit: boolean;
+  showBlockedCells: boolean;
   showTimer: boolean;
 }
 
@@ -22,6 +23,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   autoClearNotes: true,
   highlightPeers: true,
   highlightSameDigit: true,
+  showBlockedCells: true,
   showTimer: true,
 };
 
