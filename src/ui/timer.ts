@@ -3,6 +3,8 @@ import { formatTimeMMSS } from '../services/share';
 
 export class GameTimer {
   private intervalId: number | null = null;
+  private lastTickAt = 0;
+  private partialMilliseconds = 0;
   private onTickCallback: () => void;
   private onTimeUpCallback: () => void;
 
@@ -14,12 +16,19 @@ export class GameTimer {
   public start(state: GameState): void {
     this.stop();
     if (!state.started || state.paused || state.ended) return;
+    this.lastTickAt = Date.now();
 
     this.intervalId = window.setInterval(() => {
       if (!state.started || state.paused || state.ended) return;
-      state.elapsed++;
+      const now = Date.now();
+      this.partialMilliseconds += Math.max(0, now - this.lastTickAt);
+      this.lastTickAt = now;
+      const wholeSeconds = Math.floor(this.partialMilliseconds / 1000);
+      if (wholeSeconds === 0) return;
+      this.partialMilliseconds %= 1000;
+      state.elapsed += wholeSeconds;
       if (state.timeLimit > 0) {
-        state.secondsLeft = Math.max(0, state.secondsLeft - 1);
+        state.secondsLeft = Math.max(0, state.secondsLeft - wholeSeconds);
         this.onTickCallback();
         if (state.secondsLeft <= 0) {
           state.ended = true;
@@ -31,7 +40,7 @@ export class GameTimer {
       } else {
         this.onTickCallback();
       }
-    }, 1000);
+    }, 250);
   }
 
   public stop(): void {
@@ -39,6 +48,8 @@ export class GameTimer {
       window.clearInterval(this.intervalId);
       this.intervalId = null;
     }
+    this.lastTickAt = 0;
+    this.partialMilliseconds = 0;
   }
 
   public render(state: GameState, showTimer = true): void {

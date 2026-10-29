@@ -8,8 +8,75 @@ import {
 } from '../core/state';
 import { getAllConflictingCells, getCandidatesForCell } from '../core/validator';
 import { describe, expect, it } from './test-harness';
+import { GameTimer } from '../ui/timer';
 
 describe('Validator, State Reducer, Auto-Notes & Undo/Redo Fixes', () => {
+  it('creates a playable puzzle in Ready state with its initial timer value', () => {
+    const ready = createNewGameState({
+      size: 4,
+      difficulty: 'easy',
+      mode: 'standard',
+      timeLimit: 180,
+      seed: 'READY-STATE-TEST',
+    });
+    expect(ready.started).toBe(false);
+    expect(ready.paused).toBe(false);
+    expect(ready.secondsLeft).toBe(180);
+    expect(ready.elapsed).toBe(0);
+    expect(ready.board.length).toBe(16);
+  });
+
+  it('keeps one timer active, accounts for delayed ticks, and excludes paused time', () => {
+    const originalNow = Date.now;
+    const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+    let now = 10000;
+    let interval: () => void = () => {};
+    let intervalsCreated = 0;
+    let intervalsCleared = 0;
+    Date.now = () => now;
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: {
+        setInterval: (callback: () => void) => {
+          interval = callback;
+          intervalsCreated++;
+          return intervalsCreated;
+        },
+        clearInterval: () => { intervalsCleared++; },
+      },
+    });
+
+    try {
+      const state = createNewGameState({ size: 4, difficulty: 'easy', mode: 'standard', timeLimit: 10, seed: 'TIMER-TEST' });
+      state.started = true;
+      const timer = new GameTimer(() => {}, () => {});
+      timer.start(state);
+      timer.start(state);
+      expect(intervalsCreated).toBe(2);
+      expect(intervalsCleared).toBe(1);
+
+      now += 3500;
+      interval();
+      expect(state.elapsed).toBe(3);
+      expect(state.secondsLeft).toBe(7);
+
+      state.paused = true;
+      timer.stop();
+      now += 60000;
+      state.paused = false;
+      timer.start(state);
+      now += 2000;
+      interval();
+      expect(state.elapsed).toBe(5);
+      expect(state.secondsLeft).toBe(5);
+      timer.stop();
+    } finally {
+      Date.now = originalNow;
+      if (originalWindow) Object.defineProperty(globalThis, 'window', originalWindow);
+      else delete (globalThis as { window?: Window }).window;
+    }
+  });
+
   it('identifies row, column, and box conflicts accurately', () => {
     const board = new Array(81).fill(0);
     board[0] = 7;
@@ -37,6 +104,7 @@ describe('Validator, State Reducer, Auto-Notes & Undo/Redo Fixes', () => {
       timeLimit: 0,
       seed: 'STATE-TEST-4X4',
     });
+    state.started = true;
 
     fillAutoNotes(state);
     const emptyIdx = state.board.findIndex((v) => v === 0);
@@ -71,6 +139,7 @@ describe('Validator, State Reducer, Auto-Notes & Undo/Redo Fixes', () => {
       timeLimit: 0,
       seed: 'STRIKES-TEST',
     });
+    state.started = true;
 
     const emptyIdx = state.board.findIndex((v) => v === 0);
     const correctDigit = state.solution[emptyIdx];

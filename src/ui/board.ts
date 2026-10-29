@@ -104,6 +104,11 @@ export class BoardView {
     }
 
     const meta = getGridMeta(state.size);
+    const inputBlocked = !state.started || state.paused || state.ended;
+    this.boardEl.inert = inputBlocked;
+    if (inputBlocked) this.boardEl.setAttribute('aria-hidden', 'true');
+    else this.boardEl.removeAttribute('aria-hidden');
+    this.boardEl.parentElement?.classList.toggle('is-paused', state.paused);
     const conflicts = getAllConflictingCells(state.board, state.size);
     const selected = state.selected;
     // Blocking highlights must never replace the selected cell's normal blue area.
@@ -168,15 +173,6 @@ export class BoardView {
       const focusIndex = selected >= 0 ? selected : 0;
       el.tabIndex = i === focusIndex ? 0 : -1;
 
-      // Hide cell contents while paused so players cannot study the board
-      if (state.paused) {
-        if (this.lastValues[i] !== 'PAUSED') {
-          el.innerHTML = '';
-          this.lastValues[i] = 'PAUSED';
-        }
-        continue;
-      }
-
       const cellNotes = state.notes[i];
       const renderKey = val
         ? `V:${val}`
@@ -211,13 +207,22 @@ export class BoardView {
       el.setAttribute('aria-label', ariaParts.join(', '));
     }
 
-    // Render Pause or Ended Overlay
-    if (state.paused) {
-      this.overlayEl.className = 'board-overlay visible';
+    // Render Ready, Paused, or Ended Overlay above the unchanged board.
+    if (!state.started && !state.ended) {
+      this.overlayEl.className = 'board-overlay visible ready';
       this.overlayEl.innerHTML = `
-        <div style="color:var(--primary-hover);">${icon('lock', 34)}</div>
+        <div class="board-overlay-icon">${icon('play', 34)}</div>
+        <h3>Ready to Play</h3>
+        <p>Start when you're ready.</p>
+        <button type="button" class="btn primary" id="overlayResumeBtn">${icon('play', 15)} <span>Start Game</span></button>
+      `;
+      document.getElementById('overlayResumeBtn')?.addEventListener('click', onResumeClick);
+    } else if (state.paused) {
+      this.overlayEl.className = 'board-overlay visible paused';
+      this.overlayEl.innerHTML = `
+        <div class="board-overlay-icon">${icon('lock', 34)}</div>
         <h3>Game Paused</h3>
-        <p>The board is hidden while the clock is paused.</p>
+        <p>Your progress is saved. Resume whenever you're ready.</p>
         <button type="button" class="btn primary" id="overlayResumeBtn">${icon('play', 15)} <span>Resume Game</span></button>
       `;
       document.getElementById('overlayResumeBtn')?.addEventListener('click', onResumeClick);

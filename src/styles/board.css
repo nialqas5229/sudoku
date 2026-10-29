@@ -57,6 +57,11 @@
   overflow: hidden;
   background: var(--cell-bg);
   box-shadow: var(--shadow-sm);
+  transition: filter 0.18s ease;
+}
+
+.board-stage.is-paused .board {
+  filter: blur(5px);
 }
 
 .board[data-size="4"] {
@@ -213,11 +218,20 @@
   padding: 20px;
   text-align: center;
   background: rgba(15, 23, 42, 0.78);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border-radius: 8px;
   color: #ffffff;
   z-index: 10;
+}
+
+.board-overlay.ready,
+.board-overlay.paused {
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.board-overlay-icon { color: #93c5fd; }
+
+@media (prefers-reduced-motion: reduce) {
+  .board { transition: none; }
 }
 
 .board-overlay.visible {

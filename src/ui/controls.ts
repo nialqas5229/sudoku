@@ -65,7 +65,7 @@ export function renderControlsAndStats(state: GameState, settings: UserSettings)
   setBtnDisabled('redoBtn', locked || state.historyIndex >= state.history.length - 1);
   setBtnDisabled('hintBtn', locked || purist || state.hintsLeft <= 0);
   setBtnDisabled('checkBtn', locked);
-  setBtnDisabled('pauseBtn', !state.started || state.ended);
+  setBtnDisabled('pauseBtn', state.ended);
 
   const blockedCellsBtn = document.getElementById('showBlockedCellsBtn');
   if (blockedCellsBtn) {
@@ -88,7 +88,10 @@ export function renderControlsAndStats(state: GameState, settings: UserSettings)
 
   const pauseBtn = document.getElementById('pauseBtn');
   if (pauseBtn) {
-    pauseBtn.innerHTML = `${icon(state.paused ? 'play' : 'pause', 15)} <span>${state.paused ? 'Resume' : 'Pause'}</span>`;
+    const action = !state.started ? 'Start Game' : state.paused ? 'Resume Game' : 'Pause Game';
+    const actionIcon = !state.started || state.paused ? 'play' : 'pause';
+    pauseBtn.innerHTML = `${icon(actionIcon, 15)} <span>${action}</span>`;
+    pauseBtn.setAttribute('aria-label', action);
   }
 
   const hintBtn = document.getElementById('hintBtn');

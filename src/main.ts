@@ -275,33 +275,38 @@ function handleCheckBoard(): void {
 }
 
 function togglePause(): void {
-  if (!state.started || state.ended) return;
-  state.paused = !state.paused;
-  if (state.paused) {
-    gameTimer.stop();
-    setBoardStatus('Game paused — board hidden.');
-  } else {
+  if (state.ended) return;
+  if (!state.started) {
+    state.started = true;
+    state.paused = false;
+    recordGameStart();
+    gameTimer.start(state);
+    setBoardStatus(state.isDaily ? `Daily Challenge (${state.dailyDate}) started! Select an empty cell.` : 'Game started. Select an empty cell.');
+  } else if (state.paused) {
+    state.paused = false;
     gameTimer.start(state);
     setBoardStatus('Game resumed.');
+  } else {
+    state.paused = true;
+    gameTimer.stop();
+    setBoardStatus('Game paused. Your progress is saved.');
   }
   saveAutosavedGame(state);
   renderAll();
 }
 
 function startNewPuzzle(config: GameConfig): void {
+  gameTimer.stop();
   clearBannerMessage();
   setBoardStatus('Generating unique-solution puzzle...');
 
   const applyCreatedState = (newState: GameState) => {
     state = newState;
-    recordGameStart();
     saveAutosavedGame(state);
     gameTimer.start(state);
-    setBoardStatus(
-      state.isDaily
-        ? `Daily Challenge (${state.dailyDate}) started! Select an empty cell.`
-        : `New ${state.size}×${state.size} ${DIFFICULTY_LABELS[state.difficulty]} puzzle ready.`
-    );
+    setBoardStatus(state.isDaily
+      ? `Daily Challenge (${state.dailyDate}) is ready. Start when you're ready.`
+      : `New ${state.size}×${state.size} ${DIFFICULTY_LABELS[state.difficulty]} puzzle is ready.`);
     renderAll();
   };
 
@@ -460,6 +465,8 @@ function setupKeyboardShortcuts(): void {
       return;
     }
 
+    if (!state.started || state.paused || state.ended) return;
+
     if (state.selected < 0) return;
 
     const num = Number(e.key);
@@ -525,9 +532,8 @@ function bootstrap(): void {
   const saved = loadAutosavedGame();
   if (saved) {
     state = saved;
-    state.paused = false;
-    setBoardStatus('Resumed your saved puzzle automatically.');
-    gameTimer.start(state);
+    state.paused = state.started && !state.ended;
+    setBoardStatus(state.started ? 'Your saved game is paused. Resume when you are ready.' : 'Your saved puzzle is ready to play.');
   } else {
     state = createNewGameState({
       size: 9,
@@ -535,7 +541,6 @@ function bootstrap(): void {
       mode: 'standard',
       timeLimit: 0,
     });
-    recordGameStart();
     saveAutosavedGame(state);
     gameTimer.start(state);
   }

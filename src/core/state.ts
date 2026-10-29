@@ -59,7 +59,7 @@ export function createNewGameState(config: GameConfig): GameState {
     quickFill: false,
     notesMode: false,
     showErrors: true,
-    started: true,
+    started: false,
     paused: false,
     ended: false,
     won: false,
