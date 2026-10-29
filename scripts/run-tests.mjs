@@ -12,6 +12,8 @@ async function runWithEsbuild(tmpDir) {
     import '../src/tests/solver.test.ts';
     import '../src/tests/generator.test.ts';
     import '../src/tests/validator.test.ts';
+    import '../src/tests/stats.test.ts';
+    import '../src/tests/feedback.test.ts';
     import { getTestResults } from '../src/tests/test-harness.ts';
     export { getTestResults };
   `;

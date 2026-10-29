@@ -8,6 +8,7 @@ export class BoardView {
   private boardEl: HTMLElement;
   private overlayEl: HTMLElement;
   private currentSize: GridSize | null = null;
+  private currentGameId: string | null = null;
   private cellElements: HTMLButtonElement[] = [];
   private lastValues: string[] = [];
   private longPressTimer: number | null = null;
@@ -99,8 +100,17 @@ export class BoardView {
     onResumeClick: () => void,
     onNewGameClick: () => void
   ): void {
+    const isNewGame = this.currentGameId !== state.id;
     if (this.currentSize !== state.size || this.cellElements.length !== state.size * state.size) {
       this.buildGridDOM(state.size);
+    }
+    if (isNewGame) {
+      this.currentGameId = state.id;
+      this.lastValues = state.board.map((value, index) =>
+        value > 0 ? `V:${value}` : state.notes[index].length > 0
+          ? `N:${state.notes[index].join(',')}:H:0`
+          : 'E'
+      );
     }
 
     const meta = getGridMeta(state.size);
@@ -179,6 +189,10 @@ export class BoardView {
         : cellNotes.length > 0
         ? `N:${cellNotes.join(',')}:H:${highlightDigit || 0}`
         : 'E';
+
+      const valueChanged = !isNewGame && this.lastValues[i] !== renderKey;
+      el.classList.toggle('pop-anim', valueChanged && val > 0 && !isConflict);
+      el.classList.toggle('shake-anim', valueChanged && val > 0 && isConflict);
 
       if (this.lastValues[i] !== renderKey) {
         if (val > 0) {

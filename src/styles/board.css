@@ -35,7 +35,10 @@
 
 .pill-badge.seed-btn {
   cursor: pointer;
+  min-width: 0;
+  max-width: min(100%, 320px);
 }
+.pill-badge.seed-btn span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pill-badge.seed-btn:hover {
   border-color: var(--primary);
   color: var(--primary);
@@ -248,4 +251,19 @@
   font-size: 14px;
   color: #cbd5e1;
   max-width: 280px;
+}
+
+@media (max-width: 520px) {
+  .board-stage {
+    width: min(100%, calc(100vw - 48px));
+  }
+
+  .board-overlay {
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .board-overlay h3 { font-size: clamp(18px, 5vw, 22px); }
+  .board-overlay p { font-size: clamp(12px, 3.5vw, 14px); }
+  .board-overlay .btn { min-height: 44px; }
 }

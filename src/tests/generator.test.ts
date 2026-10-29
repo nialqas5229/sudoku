@@ -2,7 +2,16 @@ import { generatePuzzle, parseCustomPuzzleString } from '../core/generator';
 import { hasUniqueSolution } from '../core/solver';
 import { isBoardSolved } from '../core/validator';
 import { describe, expect, it } from './test-harness';
-import { getDailyCompletion, getDailyConfig, getDailyCountdown, getNextDailyRelease, saveDailyCompletion } from '../services/daily';
+import {
+  getDailyCompletion,
+  getDailyCompletionHistory,
+  getDailyConfig,
+  getDailyCountdown,
+  getDailyStreaks,
+  getNextDailyRelease,
+  saveDailyCompletion,
+} from '../services/daily';
+import { loadStats } from '../services/stats';
 
 function mockLocalStorage(): Map<string, string> {
   const values = new Map<string, string>();
@@ -101,5 +110,34 @@ describe('Daily puzzle schedule', () => {
     const values = mockLocalStorage();
     values.set('sudoku_v2_daily_completions', '{not-json');
     expect(getDailyCompletion('2026-10-30')).toBe(null);
+  });
+
+  it('preserves legacy completed dates and derives current and best streaks from dates', () => {
+    const values = mockLocalStorage();
+    values.set('sudoku_v2_player_stats', JSON.stringify({
+      completedDailies: ['2026-10-28', '2026-10-29', 'invalid-date'],
+      currentDailyStreak: 99,
+      bestDailyStreak: 99,
+    }));
+    const today = getDailyConfig('2026-10-30');
+    saveDailyCompletion({
+      date: today.dateStr,
+      puzzleId: today.seed,
+      completed: true,
+      difficulty: today.difficulty,
+      completionTimeSeconds: 321,
+      completedAt: '2026-10-30T10:00:00.000Z',
+      mistakes: 0,
+    });
+
+    const now = Date.parse('2026-10-30T10:00:00.000Z');
+    const streaks = getDailyStreaks([], now);
+    expect(streaks.currentDailyStreak).toBe(3);
+    expect(streaks.bestDailyStreak).toBe(3);
+    const stats = loadStats();
+    expect(stats.currentDailyStreak).toBe(3);
+    expect(stats.bestDailyStreak).toBe(3);
+    expect(getDailyCompletionHistory().length).toBe(1);
+    expect(getDailyStreaks(['2026-10-26'], Date.parse('2026-11-01T10:00:00.000Z')).currentDailyStreak).toBe(0);
   });
 });

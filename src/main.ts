@@ -14,6 +14,7 @@ import {
   undoState,
 } from './core/state';
 import { Difficulty, GameConfig, GameState } from './core/types';
+import { getCellRuleConflictUnits, getRuleConflictDescriptions } from './core/validator';
 import { audioService } from './services/audio';
 import {
   DailyCompletion,
@@ -26,6 +27,7 @@ import {
 import { hapticsService } from './services/haptics';
 import { loadSettings, saveSettings, UserSettings } from './services/settings';
 import {
+  loadActiveAutosavedGame,
   loadAutosavedGame,
   recordGameStart,
   recordGameWin,
@@ -41,6 +43,7 @@ import {
   openNewGameModal,
   openSettingsModal,
   openStatsModal,
+  openWelcomeBackModal,
   openWinModal,
 } from './ui/modals';
 import { applyFontSize, applyTheme } from './ui/theme';
@@ -61,6 +64,13 @@ let gameTimer: GameTimer;
 let generatorWorker: Worker | null = null;
 let workerReqId = 0;
 let dailyCountdownInterval: number | null = null;
+let pendingDailyDate: string | null = null;
+let replacementConfirmedForStateId: string | null = null;
+
+function hasUnfinishedNormalProgress(candidate: GameState | null | undefined): candidate is GameState {
+  return !!candidate && !candidate.isDaily && !candidate.ended &&
+    (candidate.started || candidate.board.some((value, index) => !candidate.fixed[index] && value > 0));
+}
 
 function initWorker(): void {
   try {
@@ -196,6 +206,10 @@ function handleDigitInput(digit: number, forceNotes = false, targetCell?: number
 
   if (!outcome.changed) return;
 
+  const duplicateUnits = digit > 0 && !outcome.noteToggled
+    ? getCellRuleConflictUnits(state.board, state.selected, state.size)
+    : [];
+
   saveAutosavedGame(state);
 
   if (outcome.wonNow) {
@@ -208,10 +222,17 @@ function handleDigitInput(digit: number, forceNotes = false, targetCell?: number
     return;
   }
 
-  if (outcome.mistakeMade) {
+  if (duplicateUnits.length > 0 && settings.warnOnMistake) {
     audioService.playError();
     hapticsService.error();
-    setBoardStatus(`Not quite — ${digit} doesn't belong here.`);
+    const mismatch = outcome.mistakeMade ? '; this value also does not match the solution' : '';
+    const message = `Duplicate ${digit} in ${duplicateUnits.join(', ')}${mismatch}.`;
+    setBoardStatus(message);
+    showBannerMessage(message, 'warn');
+  } else if (outcome.mistakeMade) {
+    audioService.playError();
+    hapticsService.error();
+    setBoardStatus(settings.warnOnMistake ? `Not quite — ${digit} doesn't belong here.` : `Placed ${digit}.`);
   } else if (outcome.noteToggled) {
     audioService.playNote();
     hapticsService.light();
@@ -256,12 +277,26 @@ function handleSmartHint(): void {
 function handleCheckBoard(): void {
   if (!state.started || state.paused || state.ended) return;
   const emptyCount = state.board.filter((v) => v === 0).length;
+  const ruleConflicts = getRuleConflictDescriptions(state.board, state.size);
   const wrongCells = state.board.filter((v, i) => v !== 0 && v !== state.solution[i]).length;
 
-  if (wrongCells > 0) {
+  if (ruleConflicts.length > 0) {
     audioService.playError();
+    hapticsService.error();
+    const visibleConflicts = ruleConflicts.slice(0, 3).join('; ');
+    const extraConflicts = ruleConflicts.length > 3 ? `; and ${ruleConflicts.length - 3} more` : '';
+    const mismatchText = wrongCells > 0
+      ? ` ${wrongCells} filled value${wrongCells === 1 ? '' : 's'} also do not match the solution.`
+      : '';
     showBannerMessage(
-      `Found ${wrongCells} incorrect number${wrongCells === 1 ? '' : 's'}. Check the highlighted cells!`,
+      `Rule conflicts: ${visibleConflicts}${extraConflicts}.${mismatchText}`,
+      'warn'
+    );
+  } else if (wrongCells > 0) {
+    audioService.playError();
+    hapticsService.error();
+    showBannerMessage(
+      `Found ${wrongCells} value${wrongCells === 1 ? '' : 's'} that do not match the solution. No row, column, or box duplicates found.`,
       'warn'
     );
   } else if (emptyCount > 0) {
@@ -279,7 +314,7 @@ function togglePause(): void {
   if (!state.started) {
     state.started = true;
     state.paused = false;
-    recordGameStart();
+    recordGameStart(state.isDaily);
     gameTimer.start(state);
     setBoardStatus(state.isDaily ? `Daily Challenge (${state.dailyDate}) started! Select an empty cell.` : 'Game started. Select an empty cell.');
   } else if (state.paused) {
@@ -296,11 +331,26 @@ function togglePause(): void {
 }
 
 function startNewPuzzle(config: GameConfig): void {
+  if (!config.isDaily) {
+    const savedNormal = loadAutosavedGame();
+    const candidate = state && !state.isDaily && !state.ended ? state : savedNormal;
+    if (hasUnfinishedNormalProgress(candidate)) {
+      const alreadyConfirmed = replacementConfirmedForStateId === candidate.id;
+      replacementConfirmedForStateId = null;
+      if (!alreadyConfirmed && !window.confirm(
+        `Starting a new puzzle will replace your unfinished ${DIFFICULTY_LABELS[candidate.difficulty]} game (${candidate.board.filter((value) => value > 0).length}/${candidate.size * candidate.size} cells filled). Continue?`
+      )) return;
+    } else {
+      replacementConfirmedForStateId = null;
+    }
+  }
+  pendingDailyDate = config.isDaily ? config.dailyDate || null : null;
   gameTimer.stop();
   clearBannerMessage();
   setBoardStatus('Generating unique-solution puzzle...');
 
   const applyCreatedState = (newState: GameState) => {
+    pendingDailyDate = null;
     state = newState;
     saveAutosavedGame(state);
     gameTimer.start(state);
@@ -348,6 +398,7 @@ function startDailyPuzzle(): void {
     showDailyCompletion(completion);
     return;
   }
+  if (pendingDailyDate === daily.dateStr) return;
   if (state?.isDaily && state.dailyDate === daily.dateStr && !state.ended) {
     setBoardStatus(`Resumed today's Daily Challenge (${daily.dateStr}).`);
     return;
@@ -361,6 +412,12 @@ function startDailyPuzzle(): void {
     isDaily: true,
     dailyDate: daily.dateStr,
   });
+}
+
+function refreshDailyAfterMidnight(): void {
+  if (!state?.isDaily || state.dailyDate === getTodayDateString()) return;
+  if (document.querySelector('.modal-backdrop.open')) return;
+  startDailyPuzzle();
 }
 
 function stopDailyCountdown(): void {
@@ -528,12 +585,14 @@ function bootstrap(): void {
     () => handleLoss()
   );
 
-  // Restore autosaved game if available, otherwise generate fresh initial game
-  const saved = loadAutosavedGame();
+  // Restore the last active game; normal games receive an explicit Continue/New choice.
+  const saved = loadActiveAutosavedGame();
   if (saved) {
     state = saved;
     state.paused = state.started && !state.ended;
-    setBoardStatus(state.started ? 'Your saved game is paused. Resume when you are ready.' : 'Your saved puzzle is ready to play.');
+    setBoardStatus(state.isDaily
+      ? state.started ? 'Your saved Daily Puzzle is paused. Resume when you are ready.' : 'Your saved Daily Puzzle is ready to play.'
+      : state.started ? 'Your saved game is paused. Resume when you are ready.' : 'Your saved puzzle is ready to play.');
   } else {
     state = createNewGameState({
       size: 9,
@@ -662,6 +721,41 @@ function bootstrap(): void {
 
   const completedToday = getDailyCompletion();
   if (completedToday) showDailyCompletion(completedToday);
+
+  if (saved && hasUnfinishedNormalProgress(saved)) {
+    const showWelcomeBack = () => {
+      openWelcomeBackModal(
+        state,
+        () => {
+          state.paused = state.started && !state.ended;
+          saveAutosavedGame(state);
+          setBoardStatus(state.started ? 'Your saved game is paused. Resume when you are ready.' : 'Your saved puzzle is ready to play.');
+          renderAll();
+        },
+        () => {
+          replacementConfirmedForStateId = state.id;
+          openNewGameModal(state, startNewPuzzle);
+        }
+      );
+    };
+
+    if (completedToday) {
+      const onModalsClosed = () => {
+        window.setTimeout(() => {
+          if (document.querySelector('.modal-backdrop.open')) return;
+          document.removeEventListener('modalsclosed', onModalsClosed);
+          showWelcomeBack();
+        }, 0);
+      };
+      document.addEventListener('modalsclosed', onModalsClosed);
+    } else {
+      showWelcomeBack();
+    }
+  }
+
+  window.setInterval(refreshDailyAfterMidnight, 30_000);
+  document.addEventListener('visibilitychange', refreshDailyAfterMidnight);
+  window.addEventListener('pagehide', () => saveAutosavedGame(state));
 
   // Register PWA Service Worker
   if ('serviceWorker' in navigator && import.meta.env.PROD) {

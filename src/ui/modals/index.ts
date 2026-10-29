@@ -5,7 +5,12 @@ import { Difficulty, FontSize, GameConfig, GameMode, GameState, GridSize, ThemeM
 import { UserSettings } from '../../services/settings';
 import { calculateStarRating, formatTimeMMSS, shareOrCopyResult } from '../../services/share';
 import { ACHIEVEMENTS, AchievementDef, loadStats } from '../../services/stats';
-import { DailyCompletion, formatDailyCompletionDate } from '../../services/daily';
+import {
+  DailyCompletion,
+  formatDailyCompletionDate,
+  getDailyCompletedDates,
+  getDailyCompletionHistory,
+} from '../../services/daily';
 
 export function openDailyCompletionModal(
   completion: DailyCompletion,
@@ -36,6 +41,38 @@ export function openDailyCompletionModal(
 export function closeAllModals(): void {
   document.querySelectorAll('.modal-backdrop').forEach((el) => el.classList.remove('open'));
   document.dispatchEvent(new Event('modalsclosed'));
+}
+
+export function openWelcomeBackModal(
+  state: GameState,
+  onContinue: () => void,
+  onStartNew: () => void
+): void {
+  const modal = document.getElementById('welcomeBackModal');
+  const body = document.getElementById('welcomeBackBody');
+  if (!modal || !body) return;
+  const filledCells = state.board.filter((value) => value > 0).length;
+  body.innerHTML = `
+    <p>You have an unfinished game saved on this device.</p>
+    <div class="stats-grid">
+      <div class="stat-box"><b>${DIFFICULTY_LABELS[state.difficulty]}</b><span>Difficulty</span></div>
+      <div class="stat-box"><b>${filledCells}/${state.size * state.size}</b><span>Cells filled</span></div>
+      <div class="stat-box"><b>${state.size}×${state.size}</b><span>Grid size</span></div>
+    </div>
+    <div class="action-stack">
+      <button type="button" class="btn primary" id="continueSavedGameBtn">Continue Game</button>
+      <button type="button" class="btn" id="startNewSavedGameBtn">Start New Game</button>
+    </div>
+  `;
+  modal.classList.add('open');
+  document.getElementById('continueSavedGameBtn')?.addEventListener('click', () => {
+    closeAllModals();
+    onContinue();
+  });
+  document.getElementById('startNewSavedGameBtn')?.addEventListener('click', () => {
+    closeAllModals();
+    onStartNew();
+  });
 }
 
 export function launchConfetti(): void {
@@ -264,8 +301,31 @@ export function openStatsModal(): void {
   if (!modal || !body) return;
 
   const stats = loadStats();
-  const winRate =
-    stats.gamesStarted > 0 ? Math.round((stats.gamesWon / stats.gamesStarted) * 100) : 0;
+  const dailyRecords = new Map(getDailyCompletionHistory().map((record) => [record.date, record]));
+  const dailyHistory = getDailyCompletedDates()
+    .sort((a, b) => b.localeCompare(a))
+    .map((date) => {
+      const record = dailyRecords.get(date);
+      const details = record
+        ? `${DIFFICULTY_LABELS[record.difficulty]} · ${record.mistakes} mistake${record.mistakes === 1 ? '' : 's'}`
+        : 'Completed · older result details unavailable';
+      return `<li><span><b>${date}</b><span class="daily-history-detail">${details}</span></span>${record ? `<strong>${formatTimeMMSS(record.completionTimeSeconds)}</strong>` : ''}</li>`;
+    })
+    .join('');
+  const winRate = stats.gamesStarted > 0 ? Math.round((stats.gamesWon / stats.gamesStarted) * 100) : null;
+  const normalWins = stats.completionRecords.filter((record) => !record.isDaily).length;
+  const dailyWins = stats.completionRecords.filter((record) => record.isDaily).length;
+  const unclassifiedWins = Math.max(0, stats.gamesWon - stats.completionRecords.length);
+  const unclassifiedStarts = Math.max(0, stats.gamesStarted - stats.normalGamesStarted - stats.dailyGamesStarted);
+  const allDifficultyStats = Object.values(stats.byDifficulty);
+  const overallBest = allDifficultyStats
+    .map((item) => item.bestTimeSeconds)
+    .filter((value): value is number => value !== null)
+    .reduce<number | null>((best, value) => best === null || value < best ? value : best, null);
+  const totalTimedWins = allDifficultyStats.reduce((total, item) => total + item.won, 0);
+  const overallAverage = totalTimedWins > 0
+    ? Math.round(allDifficultyStats.reduce((total, item) => total + item.totalTimeSeconds, 0) / totalTimedWins)
+    : null;
 
   const diffRows = DIFFICULTIES.map((d) => {
     const ds = stats.byDifficulty[d];
@@ -296,12 +356,26 @@ export function openStatsModal(): void {
 
   body.innerHTML = `
     <div class="stats-grid">
-      <div class="stat-box"><b>${stats.gamesWon}/${stats.gamesStarted}</b><span>Won (${winRate}%)</span></div>
+      <div class="stat-box"><b>${stats.gamesWon}</b><span>Completed games</span></div>
+      <div class="stat-box"><b>${overallBest === null ? '—' : formatTimeMMSS(overallBest)}</b><span>Best successful time</span></div>
+      <div class="stat-box"><b>${overallAverage === null ? '—' : formatTimeMMSS(overallAverage)}</b><span>Average successful time</span></div>
+      <div class="stat-box"><b>${winRate === null ? '—' : `${winRate}%`}</b><span>Win rate (wins / starts)</span></div>
       <div class="stat-box"><b style="display:inline-flex;align-items:center;gap:4px;">${icon('flame', 18)} ${stats.currentDailyStreak}</b><span>Daily Streak (Best: ${stats.bestDailyStreak})</span></div>
       <div class="stat-box"><b>${stats.flawlessWins}</b><span>Flawless Wins</span></div>
     </div>
+    <h3 style="margin:16px 0 8px;font-size:14px;">Completed by Game Type</h3>
+    <div class="stats-grid">
+      <div class="stat-box"><b>${normalWins}</b><span>Normal games</span></div>
+      <div class="stat-box"><b>${dailyWins}</b><span>Daily Puzzles</span></div>
+      <div class="stat-box"><b>${unclassifiedWins}</b><span>Earlier wins not classified</span></div>
+    </div>
+    <p class="stats-note">${stats.gamesStarted} starts counted in the win-rate denominator. Starts tracked by type: ${stats.normalGamesStarted} normal, ${stats.dailyGamesStarted} daily${unclassifiedStarts ? `; ${unclassifiedStarts} earlier starts have no type detail` : ''}.</p>
+    <h3 style="margin:16px 0 8px;font-size:14px;">Daily Puzzle History</h3>
+    ${dailyHistory
+      ? `<ul class="daily-history-list" aria-label="Completed Daily Puzzle results">${dailyHistory}</ul>`
+      : '<p style="color:var(--muted);font-size:13px;">No completed Daily Puzzles recorded yet.</p>'}
     <h3 style="margin:14px 0 8px;font-size:14px;">Solve Times by Difficulty</h3>
-    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <table class="stats-times-table" style="width:100%;border-collapse:collapse;font-size:13px;">
       <thead>
         <tr style="border-bottom:1px solid var(--panel-border);color:var(--muted);">
           <th style="text-align:left;padding:6px 4px;">Level</th>
@@ -351,6 +425,10 @@ export function openSettingsModal(
       <input type="checkbox" id="setAutoClearNotes" ${settings.autoClearNotes ? 'checked' : ''} />
     </div>
     <div class="ToggleRow">
+      <span>Show text warnings for incorrect entries</span>
+      <input type="checkbox" id="setWarnOnMistake" ${settings.warnOnMistake ? 'checked' : ''} />
+    </div>
+    <div class="ToggleRow">
       <span>Highlight row, column & box peers</span>
       <input type="checkbox" id="setHighlightPeers" ${settings.highlightPeers ? 'checked' : ''} />
     </div>
@@ -363,7 +441,7 @@ export function openSettingsModal(
       <input type="checkbox" id="setShowTimer" ${settings.showTimer ? 'checked' : ''} />
     </div>
     <div class="ToggleRow">
-      <span>Sound effects (Web Audio)</span>
+      <label for="setSound">Sound effects (Web Audio)</label>
       <input type="checkbox" id="setSound" ${settings.soundEnabled ? 'checked' : ''} />
     </div>
     <div class="ToggleRow" style="border-bottom:0;">
@@ -379,6 +457,7 @@ export function openSettingsModal(
       theme: (document.getElementById('setTheme') as HTMLSelectElement).value as ThemeMode,
       fontSize: (document.getElementById('setFontSize') as HTMLSelectElement).value as FontSize,
       autoClearNotes: (document.getElementById('setAutoClearNotes') as HTMLInputElement).checked,
+      warnOnMistake: (document.getElementById('setWarnOnMistake') as HTMLInputElement).checked,
       highlightPeers: (document.getElementById('setHighlightPeers') as HTMLInputElement).checked,
       highlightSameDigit: (document.getElementById('setHighlightSame') as HTMLInputElement).checked,
       showBlockedCells: settings.showBlockedCells,

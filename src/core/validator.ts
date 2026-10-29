@@ -42,6 +42,54 @@ export function getAllConflictingCells(board: readonly number[], size: GridSize 
   return conflicting;
 }
 
+/** Describes duplicate digits by Sudoku unit without changing cell presentation. */
+export function getRuleConflictDescriptions(board: readonly number[], size: GridSize = 9): string[] {
+  const meta = getGridMeta(size);
+  const units: Array<{ label: string; cells: number[][] }> = [
+    { label: 'Row', cells: meta.rows },
+    { label: 'Column', cells: meta.cols },
+    { label: 'Box', cells: meta.boxes },
+  ];
+  const descriptions: string[] = [];
+
+  for (const unit of units) {
+    unit.cells.forEach((indices, unitIndex) => {
+      const counts = new Map<number, number>();
+      for (const index of indices) {
+        const digit = board[index];
+        if (digit > 0) counts.set(digit, (counts.get(digit) || 0) + 1);
+      }
+      for (const [digit, count] of counts) {
+        if (count > 1) descriptions.push(`${unit.label} ${unitIndex + 1} repeats ${digit}`);
+      }
+    });
+  }
+  return descriptions;
+}
+
+/** Returns the row, column, and box labels that conflict with the value in one cell. */
+export function getCellRuleConflictUnits(
+  board: readonly number[],
+  cellIndex: number,
+  size: GridSize = 9
+): string[] {
+  if (cellIndex < 0 || cellIndex >= size * size) return [];
+  const digit = board[cellIndex];
+  if (digit <= 0) return [];
+  const meta = getGridMeta(size);
+  const row = meta.cellRow[cellIndex];
+  const col = meta.cellCol[cellIndex];
+  const box = meta.cellBox[cellIndex];
+  const units = [
+    { label: `row ${row + 1}`, cells: meta.rows[row] },
+    { label: `column ${col + 1}`, cells: meta.cols[col] },
+    { label: `box ${box + 1}`, cells: meta.boxes[box] },
+  ];
+  return units
+    .filter((unit) => unit.cells.some((index) => index !== cellIndex && board[index] === digit))
+    .map((unit) => unit.label);
+}
+
 /**
  * Computes candidate bitmask for a given cell index.
  * Bit `d` (1 << d) is 1 if digit `d` (1..size) can be legally placed at `cellIndex`.

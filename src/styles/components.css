@@ -30,6 +30,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   margin-top: 12px;
   margin-bottom: 6px;
   font-size: 12px;
@@ -38,15 +39,15 @@
 
 .numbers {
   display: grid;
-  grid-template-columns: repeat(9, 1fr);
+  grid-template-columns: repeat(9, minmax(0, 1fr));
   gap: 6px;
 }
 
 .numbers[data-size="6"] {
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 .numbers[data-size="4"] {
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .num-btn {
@@ -306,6 +307,7 @@
   width: min(520px, 100%);
   max-height: 90vh;
   overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--panel);
   border: 1px solid var(--panel-border);
   border-radius: var(--radius-lg);
@@ -329,6 +331,13 @@
 .daily-result-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 16px 0; }
 .daily-countdown { margin: 18px 0 8px; color: var(--primary); font-size: clamp(24px, 7vw, 36px); font-weight: 800; font-variant-numeric: tabular-nums; }
 .daily-countdown-label { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .08em; }
+.daily-history-list { list-style: none; padding: 0; margin: 0; max-height: 190px; overflow-y: auto; border: 1px solid var(--panel-border); border-radius: var(--radius-sm); }
+.daily-history-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 11px; border-bottom: 1px solid var(--panel-border); font-size: 13px; }
+.daily-history-list li:last-child { border-bottom: 0; }
+.daily-history-list li > span { display: grid; gap: 2px; }
+.daily-history-list strong { font-variant-numeric: tabular-nums; }
+.daily-history-detail { color: var(--muted); font-size: 11.5px; }
+.stats-note { color: var(--muted); font-size: 11.5px; line-height: 1.45; margin: -2px 0 10px; }
 
 .modal-header {
   display: flex;
@@ -418,10 +427,76 @@
 
 @media (max-width: 520px) {
   .tools {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .tools .btn {
+    min-width: 0;
+    min-height: 44px;
+    line-height: 1.2;
+  }
+
+  .tools .btn span { white-space: normal; }
+
   .num-btn {
+    min-width: 0;
+    min-height: 48px;
     padding: 8px 0 6px;
+  }
+
+  .numbers[data-size="6"],
+  .numbers[data-size="9"] {
+    grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
+  }
+
+  .btn,
+  .select-input,
+  .text-input {
+    min-height: 44px;
+  }
+
+  .blocked-toggle { min-height: 44px; }
+
+  .keypad-bar { flex-wrap: wrap; }
+
+  .hint-banner.visible {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .hint-banner.visible > button { width: 100%; }
+
+  .modal-backdrop { padding: 10px; }
+
+  .modal-card {
+    width: 100%;
+    max-height: calc(100vh - 20px);
+    max-height: calc(100dvh - 20px);
+    padding: 16px;
+  }
+
+  .daily-countdown { font-size: clamp(18px, 6vw, 32px); }
+
+  .stats-times-table { font-size: 11px !important; }
+}
+
+@media (max-width: 380px) {
+  .action-stack { grid-template-columns: 1fr; }
+
+  .numbers[data-size="9"],
+  .numbers[data-size="6"] {
+    grid-template-columns: repeat(4, minmax(44px, 1fr));
+  }
+
+  .stats-grid { gap: 5px; }
+  .stat-box { padding: 8px 5px; }
+  .stat-box b { font-size: 16px; }
+}
+
+@media (max-width: 260px) {
+  .numbers[data-size="9"],
+  .numbers[data-size="6"] {
+    grid-template-columns: repeat(3, minmax(44px, 1fr));
   }
 }
 

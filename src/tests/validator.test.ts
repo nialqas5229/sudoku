@@ -6,7 +6,12 @@ import {
   triggerSmartHint,
   undoState,
 } from '../core/state';
-import { getAllConflictingCells, getCandidatesForCell } from '../core/validator';
+import {
+  getAllConflictingCells,
+  getCandidatesForCell,
+  getCellRuleConflictUnits,
+  getRuleConflictDescriptions,
+} from '../core/validator';
 import { describe, expect, it } from './test-harness';
 import { GameTimer } from '../ui/timer';
 
@@ -84,6 +89,45 @@ describe('Validator, State Reducer, Auto-Notes & Undo/Redo Fixes', () => {
     const conflicts = getAllConflictingCells(board, 9);
     expect(conflicts.has(0)).toBe(true);
     expect(conflicts.has(8)).toBe(true);
+  });
+
+  it('reports row, column, and box duplicates separately from solution mismatches', () => {
+    const board = new Array(16).fill(0);
+    board[0] = 4;
+    board[1] = 4;
+    board[4] = 4;
+    expect(getCellRuleConflictUnits(board, 0, 4)).toEqual(['row 1', 'column 1', 'box 1']);
+    expect(getRuleConflictDescriptions(board, 4)).toEqual([
+      'Row 1 repeats 4',
+      'Column 1 repeats 4',
+      'Box 1 repeats 4',
+    ]);
+  });
+
+  it('counts one wrong duplicate placement once and does not allow fixed clue edits', () => {
+    const solution = [1, 2, 3, 4, 3, 4, 1, 2, 2, 1, 4, 3, 4, 3, 2, 1];
+    const state = createNewGameState({
+      size: 4,
+      difficulty: 'easy',
+      mode: 'standard',
+      timeLimit: 0,
+      seed: 'VALIDATION-TEST',
+      customPuzzle: { puzzle: new Array(16).fill(0), solution },
+    });
+    state.started = true;
+    state.board[1] = 2;
+    const outcome = applyCellInput(state, 2, { cellIndex: 0 });
+    expect(outcome.mistakeMade).toBe(true);
+    expect(state.mistakes).toBe(1);
+    expect(getCellRuleConflictUnits(state.board, 0, 4)).toEqual(['row 1', 'box 1']);
+
+    const generated = createNewGameState({ size: 4, difficulty: 'easy', mode: 'standard', timeLimit: 0, seed: 'FIXED-TEST' });
+    generated.started = true;
+    const fixedIndex = generated.fixed.findIndex(Boolean);
+    const fixedValue = generated.board[fixedIndex];
+    const fixedEdit = applyCellInput(generated, fixedValue === 1 ? 2 : 1, { cellIndex: fixedIndex });
+    expect(fixedEdit.changed).toBe(false);
+    expect(generated.board[fixedIndex]).toBe(fixedValue);
   });
 
   it('computes legal candidates for an empty cell', () => {

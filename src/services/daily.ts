@@ -1,5 +1,4 @@
 import { Difficulty, GridSize } from '../core/types';
-import { loadStats } from './stats';
 import { SafeStorage } from './storage';
 
 const DAILY_TIME_ZONE = 'Asia/Karachi';
@@ -17,8 +16,8 @@ export interface DailyCompletion {
 
 type DailyCompletionHistory = Record<string, DailyCompletion>;
 
-export function getTodayDateString(): string {
-  return dateStringInKarachi(new Date());
+export function getTodayDateString(now = Date.now()): string {
+  return dateStringInKarachi(new Date(now));
 }
 
 function dateStringInKarachi(date: Date): string {
@@ -54,9 +53,9 @@ function readDailyCompletionHistory(): DailyCompletionHistory {
   const history: DailyCompletionHistory = {};
   for (const [date, record] of Object.entries(value)) {
     if (
-      /^\d{4}-\d{2}-\d{2}$/.test(date) && record && typeof record === 'object' &&
+      isValidDailyDate(date) && record && typeof record === 'object' &&
       (record as DailyCompletion).completed === true && (record as DailyCompletion).date === date &&
-      typeof (record as DailyCompletion).puzzleId === 'string' &&
+      (record as DailyCompletion).puzzleId === getDailyConfig(date).seed &&
       ['beginner', 'easy', 'medium', 'hard', 'expert'].includes((record as DailyCompletion).difficulty) &&
       Number.isFinite((record as DailyCompletion).completionTimeSeconds) &&
       (record as DailyCompletion).completionTimeSeconds >= 0 &&
@@ -69,6 +68,63 @@ function readDailyCompletionHistory(): DailyCompletionHistory {
   return history;
 }
 
+function isValidDailyDate(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).toISOString().slice(0, 10) === value;
+}
+
+function readLegacyDailyDates(): string[] {
+  const value = SafeStorage.get<unknown>('player_stats', {});
+  if (!value || typeof value !== 'object') return [];
+  const stats = value as { completedDailies?: unknown; lastDailyDateWon?: unknown };
+  const dates = Array.isArray(stats.completedDailies) ? stats.completedDailies : [];
+  return [...dates, stats.lastDailyDateWon].filter(isValidDailyDate);
+}
+
+export function getDailyCompletionHistory(): DailyCompletion[] {
+  return Object.values(readDailyCompletionHistory()).sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export function getDailyCompletedDates(additionalDates: string[] = []): string[] {
+  return [...new Set([
+    ...Object.keys(readDailyCompletionHistory()),
+    ...readLegacyDailyDates(),
+    ...additionalDates.filter(isValidDailyDate),
+  ])].sort();
+}
+
+function addDays(date: string, amount: number): string {
+  const [year, month, day] = date.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day + amount)).toISOString().slice(0, 10);
+}
+
+export function getDailyStreaks(
+  additionalDates: string[] = [],
+  now = Date.now()
+): { currentDailyStreak: number; bestDailyStreak: number } {
+  const dates = getDailyCompletedDates(additionalDates);
+  const completed = new Set(dates);
+  let bestDailyStreak = 0;
+  let running = 0;
+  let previous: string | null = null;
+
+  for (const date of dates) {
+    running = previous && addDays(previous, 1) === date ? running + 1 : 1;
+    bestDailyStreak = Math.max(bestDailyStreak, running);
+    previous = date;
+  }
+
+  const today = getTodayDateString(now);
+  let cursor = completed.has(today) ? today : completed.has(addDays(today, -1)) ? addDays(today, -1) : '';
+  let currentDailyStreak = 0;
+  while (cursor && completed.has(cursor)) {
+    currentDailyStreak++;
+    cursor = addDays(cursor, -1);
+  }
+  return { currentDailyStreak, bestDailyStreak };
+}
+
 export function getDailyCompletion(date = getTodayDateString()): DailyCompletion | null {
   const record = readDailyCompletionHistory()[date];
   return record && record.puzzleId === getDailyConfig(date).seed ? record : null;
@@ -77,7 +133,8 @@ export function getDailyCompletion(date = getTodayDateString()): DailyCompletion
 export function saveDailyCompletion(record: DailyCompletion): DailyCompletion {
   const history = readDailyCompletionHistory();
   const existing = history[record.date];
-  if (existing?.puzzleId === record.puzzleId) return existing;
+  if (existing) return existing;
+  if (!isValidDailyDate(record.date) || record.puzzleId !== getDailyConfig(record.date).seed) return record;
   history[record.date] = record;
   SafeStorage.set(COMPLETIONS_KEY, history);
   return record;
@@ -121,6 +178,6 @@ export function getDailyConfig(dateStr = getTodayDateString(), size: GridSize = 
 }
 
 export function isDailyCompleted(dateStr = getTodayDateString()): boolean {
-  const stats = loadStats();
-  return stats.completedDailies.includes(dateStr);
+  return Object.prototype.hasOwnProperty.call(readDailyCompletionHistory(), dateStr) ||
+    readLegacyDailyDates().includes(dateStr);
 }

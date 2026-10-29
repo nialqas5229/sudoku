@@ -4,14 +4,20 @@
  */
 class SoundService {
   private ctx: AudioContext | null = null;
-  public enabled = true;
+  // Sound starts off until the user's saved preference has been applied.
+  public enabled = false;
 
   private getContext(): AudioContext | null {
     if (!this.enabled || typeof window === 'undefined') return null;
     if (!this.ctx) {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (AudioCtx) {
-        this.ctx = new AudioCtx();
+        try {
+          this.ctx = new AudioCtx();
+        } catch {
+          // Audio can be unavailable or blocked by the browser; gameplay continues silently.
+          return null;
+        }
       }
     }
     if (this.ctx && this.ctx.state === 'suspended') {

@@ -89,6 +89,7 @@ button {
   grid-template-columns: minmax(0, 1.3fr) minmax(300px, 0.85fr);
   gap: 18px;
   align-items: start;
+  min-width: 0;
 }
 
 .panel {
@@ -111,11 +112,52 @@ button {
     padding: max(10px, env(safe-area-inset-top)) 10px max(20px, env(safe-area-inset-bottom));
   }
   .layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 14px;
   }
   .panel {
+    width: 100%;
+    min-width: 0;
     padding: 14px;
     border-radius: 16px;
+  }
+}
+
+@media (max-width: 520px) {
+  .app {
+    width: 100vw;
+    padding-left: max(10px, env(safe-area-inset-left));
+    padding-right: max(10px, env(safe-area-inset-right));
+  }
+
+  .app-header,
+  .brand,
+  .layout,
+  .panel {
+    min-width: 0;
+  }
+
+  .app-header,
+  .layout {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .board-stage {
+    min-width: 0;
+  }
+
+  .top-actions {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    justify-content: flex-start;
+  }
+
+  .layout > .panel,
+  .board-stage,
+  .board {
+    max-width: 100%;
+    min-width: 0;
   }
 }

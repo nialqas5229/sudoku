@@ -11,6 +11,7 @@ export interface UserSettings {
   highlightSameDigit: boolean;
   showBlockedCells: boolean;
   showTimer: boolean;
+  warnOnMistake: boolean;
 }
 
 const SETTINGS_KEY = 'settings';
@@ -18,13 +19,14 @@ const SETTINGS_KEY = 'settings';
 export const DEFAULT_SETTINGS: UserSettings = {
   theme: 'system',
   fontSize: 'medium',
-  soundEnabled: true,
+  soundEnabled: false,
   hapticsEnabled: true,
   autoClearNotes: true,
   highlightPeers: true,
   highlightSameDigit: true,
   showBlockedCells: true,
   showTimer: true,
+  warnOnMistake: true,
 };
 
 export function loadSettings(): UserSettings {
