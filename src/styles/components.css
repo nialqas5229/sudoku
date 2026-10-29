@@ -313,6 +313,23 @@
   box-shadow: var(--shadow-lg);
 }
 
+.daily-complete-card { text-align: center; }
+.daily-complete-card .modal-header { text-align: left; }
+.daily-success-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--success-bg);
+  color: var(--success-ink);
+  font-size: 26px;
+  font-weight: 800;
+}
+.daily-result-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 16px 0; }
+.daily-countdown { margin: 18px 0 8px; color: var(--primary); font-size: clamp(24px, 7vw, 36px); font-weight: 800; font-variant-numeric: tabular-nums; }
+.daily-countdown-label { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .08em; }
+
 .modal-header {
   display: flex;
   align-items: center;

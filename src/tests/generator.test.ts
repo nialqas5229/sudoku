@@ -2,6 +2,22 @@ import { generatePuzzle, parseCustomPuzzleString } from '../core/generator';
 import { hasUniqueSolution } from '../core/solver';
 import { isBoardSolved } from '../core/validator';
 import { describe, expect, it } from './test-harness';
+import { getDailyCompletion, getDailyConfig, getDailyCountdown, getNextDailyRelease, saveDailyCompletion } from '../services/daily';
+
+function mockLocalStorage(): Map<string, string> {
+  const values = new Map<string, string>();
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: {
+      localStorage: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => values.set(key, value),
+        removeItem: (key: string) => values.delete(key),
+      },
+    },
+  });
+  return values;
+}
 
 describe('Sudoku Generator & Seeded Reproducibility', () => {
   it('generates a 9x9 Medium puzzle with a guaranteed unique solution', () => {
@@ -38,5 +54,52 @@ describe('Sudoku Generator & Seeded Reproducibility', () => {
 
     const invalidRaw = '12345';
     expect(parseCustomPuzzleString(invalidRaw).valid).toBe(false);
+  });
+});
+
+describe('Daily puzzle schedule', () => {
+  it('keeps daily puzzle identity and difficulty stable for a date', () => {
+    const first = getDailyConfig('2026-10-30');
+    const repeated = getDailyConfig('2026-10-30');
+    expect(first.seed).toBe(repeated.seed);
+    expect(first.seed).toBe('DAILY-2026-10-30-9x9');
+    expect(first.difficulty).toBe(repeated.difficulty);
+    expect(first.seed === getDailyConfig('2026-10-31').seed).toBe(false);
+  });
+
+  it('counts down to the next Pakistan midnight regardless of browser timezone', () => {
+    const oneSecondBeforeKarachiMidnight = Date.parse('2026-10-30T18:59:59.000Z');
+    expect(getNextDailyRelease(oneSecondBeforeKarachiMidnight)).toBe(Date.parse('2026-10-30T19:00:00.000Z'));
+    const countdown = getDailyCountdown(oneSecondBeforeKarachiMidnight);
+    expect(countdown.hours).toBe(0);
+    expect(countdown.minutes).toBe(0);
+    expect(countdown.seconds).toBe(1);
+  });
+
+  it('moves to the following release boundary when Pakistan midnight passes', () => {
+    const justAfterRelease = Date.parse('2026-10-30T19:00:01.000Z');
+    expect(getNextDailyRelease(justAfterRelease)).toBe(Date.parse('2026-10-31T19:00:00.000Z'));
+  });
+
+  it('persists a daily result once and retains the original completion time', () => {
+    mockLocalStorage();
+    const first = {
+      date: '2026-10-30',
+      puzzleId: getDailyConfig('2026-10-30').seed,
+      completed: true as const,
+      difficulty: getDailyConfig('2026-10-30').difficulty,
+      completionTimeSeconds: 522,
+      completedAt: '2026-10-30T18:00:00.000Z',
+      mistakes: 1,
+    };
+    saveDailyCompletion(first);
+    saveDailyCompletion({ ...first, completionTimeSeconds: 900, completedAt: '2026-10-30T18:30:00.000Z' });
+    expect(getDailyCompletion(first.date)?.completionTimeSeconds).toBe(522);
+  });
+
+  it('ignores corrupted completion data without throwing', () => {
+    const values = mockLocalStorage();
+    values.set('sudoku_v2_daily_completions', '{not-json');
+    expect(getDailyCompletion('2026-10-30')).toBe(null);
   });
 });

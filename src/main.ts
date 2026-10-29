@@ -15,7 +15,14 @@ import {
 } from './core/state';
 import { Difficulty, GameConfig, GameState } from './core/types';
 import { audioService } from './services/audio';
-import { getDailyConfig } from './services/daily';
+import {
+  DailyCompletion,
+  getDailyCompletion,
+  getDailyConfig,
+  getDailyCountdown,
+  getTodayDateString,
+  saveDailyCompletion,
+} from './services/daily';
 import { hapticsService } from './services/haptics';
 import { loadSettings, saveSettings, UserSettings } from './services/settings';
 import {
@@ -30,6 +37,7 @@ import { KeypadView } from './ui/keypad';
 import {
   closeAllModals,
   openHelpModal,
+  openDailyCompletionModal,
   openNewGameModal,
   openSettingsModal,
   openStatsModal,
@@ -52,6 +60,7 @@ let keypadView: KeypadView;
 let gameTimer: GameTimer;
 let generatorWorker: Worker | null = null;
 let workerReqId = 0;
+let dailyCountdownInterval: number | null = null;
 
 function initWorker(): void {
   try {
@@ -99,9 +108,26 @@ function renderAll(): void {
 }
 
 function handleWin(): void {
+  const priorDailyCompletion = state.isDaily && state.dailyDate ? getDailyCompletion(state.dailyDate) : null;
+  if (priorDailyCompletion) {
+    showDailyCompletion(priorDailyCompletion);
+    return;
+  }
   gameTimer.stop();
   audioService.playWin();
   hapticsService.success();
+  if (state.isDaily && state.dailyDate) {
+    const daily = getDailyConfig(state.dailyDate, state.size);
+    saveDailyCompletion({
+      date: state.dailyDate,
+      puzzleId: daily.seed,
+      completed: true,
+      difficulty: state.difficulty,
+      completionTimeSeconds: state.timeLimit > 0 ? Math.max(1, state.timeLimit - state.secondsLeft) : Math.max(1, state.elapsed),
+      completedAt: new Date().toISOString(),
+      mistakes: state.mistakes,
+    });
+  }
   const unlocked = recordGameWin(state);
   showBannerMessage('Puzzle solved! Great work.', 'good');
   renderAll();
@@ -312,6 +338,15 @@ function startNewPuzzle(config: GameConfig): void {
 
 function startDailyPuzzle(): void {
   const daily = getDailyConfig();
+  const completion = getDailyCompletion(daily.dateStr);
+  if (completion) {
+    showDailyCompletion(completion);
+    return;
+  }
+  if (state?.isDaily && state.dailyDate === daily.dateStr && !state.ended) {
+    setBoardStatus(`Resumed today's Daily Challenge (${daily.dateStr}).`);
+    return;
+  }
   startNewPuzzle({
     size: daily.size,
     difficulty: daily.difficulty,
@@ -321,6 +356,60 @@ function startDailyPuzzle(): void {
     isDaily: true,
     dailyDate: daily.dateStr,
   });
+}
+
+function stopDailyCountdown(): void {
+  if (dailyCountdownInterval !== null) {
+    window.clearInterval(dailyCountdownInterval);
+    dailyCountdownInterval = null;
+  }
+}
+
+function showDailyCompletion(completion: DailyCompletion): void {
+  stopDailyCountdown();
+  const updateCountdown = () => {
+    if (!document.getElementById('dailyCompleteModal')?.classList.contains('open')) {
+      stopDailyCountdown();
+      return;
+    }
+    if (getTodayDateString() !== completion.date) {
+      stopDailyCountdown();
+      closeAllModals();
+      startDailyPuzzle();
+      return;
+    }
+    const { hours, minutes, seconds } = getDailyCountdown();
+    const display = `${String(hours).padStart(2, '0')}h : ${String(minutes).padStart(2, '0')}m : ${String(seconds).padStart(2, '0')}s`;
+    const countdown = document.getElementById('dailyCountdown');
+    if (countdown) countdown.textContent = display;
+  };
+  const { hours, minutes, seconds } = getDailyCountdown();
+  openDailyCompletionModal(
+    completion,
+    `${String(hours).padStart(2, '0')}h : ${String(minutes).padStart(2, '0')}m : ${String(seconds).padStart(2, '0')}s`,
+    () => {
+      const daily = getDailyConfig(completion.date);
+      state = createNewGameState({
+        size: daily.size,
+        difficulty: completion.difficulty,
+        mode: 'standard',
+        timeLimit: 0,
+        seed: daily.seed,
+        isDaily: true,
+        dailyDate: completion.date,
+      });
+      state.board = [...state.solution];
+      state.started = true;
+      state.ended = true;
+      state.won = true;
+      state.elapsed = completion.completionTimeSeconds;
+      stopDailyCountdown();
+      closeAllModals();
+      renderAll();
+      openWinModal(state, [], () => openNewGameModal(state, startNewPuzzle));
+    }
+  );
+  dailyCountdownInterval = window.setInterval(updateCountdown, 1000);
 }
 
 function setupKeyboardShortcuts(): void {
@@ -411,6 +500,7 @@ function setupKeyboardShortcuts(): void {
 }
 
 function bootstrap(): void {
+  document.addEventListener('modalsclosed', stopDailyCountdown);
   applyUserPreferences(settings);
   initWorker();
 
@@ -564,6 +654,9 @@ function bootstrap(): void {
       if (e.target === backdrop) closeAllModals();
     });
   });
+
+  const completedToday = getDailyCompletion();
+  if (completedToday) showDailyCompletion(completedToday);
 
   // Register PWA Service Worker
   if ('serviceWorker' in navigator && import.meta.env.PROD) {

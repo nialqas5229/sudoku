@@ -5,9 +5,37 @@ import { Difficulty, FontSize, GameConfig, GameMode, GameState, GridSize, ThemeM
 import { UserSettings } from '../../services/settings';
 import { calculateStarRating, formatTimeMMSS, shareOrCopyResult } from '../../services/share';
 import { ACHIEVEMENTS, AchievementDef, loadStats } from '../../services/stats';
+import { DailyCompletion, formatDailyCompletionDate } from '../../services/daily';
+
+export function openDailyCompletionModal(
+  completion: DailyCompletion,
+  countdown: string,
+  onViewResult: () => void
+): void {
+  const modal = document.getElementById('dailyCompleteModal');
+  const body = document.getElementById('dailyCompleteBody');
+  if (!modal || !body) return;
+  body.innerHTML = `
+    <div class="daily-success-mark" aria-hidden="true">✓</div>
+    <p>You've completed today's challenge!</p>
+    <div class="daily-result-grid">
+      <div class="stat-box"><b>${DIFFICULTY_LABELS[completion.difficulty]}</b><span>Difficulty</span></div>
+      <div class="stat-box"><b>${formatTimeMMSS(completion.completionTimeSeconds)}</b><span>Completion Time</span></div>
+      <div class="stat-box"><b>${completion.mistakes}</b><span>Mistakes</span></div>
+      <div class="stat-box"><b>Saved</b><span>Progress Status</span></div>
+    </div>
+    <p style="color:var(--muted);font-size:12px;">Completed ${formatDailyCompletionDate(completion.completedAt)}</p>
+    <div class="daily-countdown-label">NEXT DAILY PUZZLE IN</div>
+    <div class="daily-countdown" id="dailyCountdown" aria-live="off">${countdown}</div>
+    <div class="action-stack"><button type="button" class="btn primary" id="viewDailyResultBtn">View Today's Result</button></div>
+  `;
+  modal.classList.add('open');
+  document.getElementById('viewDailyResultBtn')?.addEventListener('click', onViewResult);
+}
 
 export function closeAllModals(): void {
   document.querySelectorAll('.modal-backdrop').forEach((el) => el.classList.remove('open'));
+  document.dispatchEvent(new Event('modalsclosed'));
 }
 
 export function launchConfetti(): void {
