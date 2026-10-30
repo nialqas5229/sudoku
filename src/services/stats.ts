@@ -52,7 +52,19 @@ const STATS_KEY = 'player_stats';
 const LEGACY_AUTOSAVE_KEY = 'autosave_state';
 const NORMAL_AUTOSAVE_KEY = 'normal_autosave_state';
 const DAILY_AUTOSAVE_KEY = 'daily_autosave_state';
+const DAILY_AUTOSAVE_PREFIX = 'daily_autosave_';
 const ACTIVE_AUTOSAVE_KIND_KEY = 'active_autosave_kind';
+const ACTIVE_DAILY_DATE_KEY = 'active_autosave_daily_date';
+
+function isValidDailyDate(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).toISOString().slice(0, 10) === value;
+}
+
+function dailyAutosaveKey(date: string): string {
+  return `${DAILY_AUTOSAVE_PREFIX}${date}`;
+}
 
 export const ACHIEVEMENTS: AchievementDef[] = [
   {
@@ -291,18 +303,24 @@ export function recordGameWin(state: GameState): AchievementDef[] {
   if (state.size === 9 && state.difficulty === 'expert') unlock('expert_conqueror');
 
   saveStats(stats);
-  clearAutosavedGame(state.isDaily);
+  clearAutosavedGame(state.isDaily, state.dailyDate);
   return newlyUnlocked;
 }
 
 export function saveAutosavedGame(state: GameState): void {
   if (state.ended || state.won) {
-    clearAutosavedGame(state.isDaily);
+    clearAutosavedGame(state.isDaily, state.dailyDate);
     return;
   }
-  const kind = state.isDaily ? 'daily' : 'normal';
-  SafeStorage.set(kind === 'daily' ? DAILY_AUTOSAVE_KEY : NORMAL_AUTOSAVE_KEY, state);
-  SafeStorage.set(ACTIVE_AUTOSAVE_KIND_KEY, kind);
+  if (state.isDaily) {
+    if (!isValidDailyDate(state.dailyDate)) return;
+    SafeStorage.set(dailyAutosaveKey(state.dailyDate), state);
+    SafeStorage.set(ACTIVE_DAILY_DATE_KEY, state.dailyDate);
+    SafeStorage.set(ACTIVE_AUTOSAVE_KIND_KEY, 'daily');
+  } else {
+    SafeStorage.set(NORMAL_AUTOSAVE_KEY, state);
+    SafeStorage.set(ACTIVE_AUTOSAVE_KIND_KEY, 'normal');
+  }
 }
 
 function isValidAutosavedGame(value: unknown): value is GameState {
@@ -317,7 +335,7 @@ function isValidAutosavedGame(value: unknown): value is GameState {
     typeof saved.paused !== 'boolean' || typeof saved.ended !== 'boolean' ||
     typeof saved.won !== 'boolean' || saved.won ||
     (saved.loseReason !== null && saved.loseReason !== 'time' && saved.loseReason !== 'mistakes') ||
-    (saved.isDaily && typeof saved.dailyDate !== 'string') ||
+    (saved.isDaily && !isValidDailyDate(saved.dailyDate)) ||
     !Number.isInteger(saved.timeLimit) || (saved.timeLimit as number) < 0 ||
     !Number.isInteger(saved.selected) || (saved.selected as number) < -1 || (saved.selected as number) >= (saved.size as number) ** 2 ||
     (saved.activeDigit !== null && (!Number.isInteger(saved.activeDigit) || (saved.activeDigit as number) < 1 || (saved.activeDigit as number) > (saved.size as number))) ||
@@ -367,20 +385,44 @@ function isValidAutosavedGame(value: unknown): value is GameState {
 function migrateLegacyAutosave(): void {
   const legacy = SafeStorage.get<unknown>(LEGACY_AUTOSAVE_KEY, null);
   if (isValidAutosavedGame(legacy)) {
-    const key = legacy.isDaily ? DAILY_AUTOSAVE_KEY : NORMAL_AUTOSAVE_KEY;
+    const key = legacy.isDaily && isValidDailyDate(legacy.dailyDate)
+      ? dailyAutosaveKey(legacy.dailyDate)
+      : NORMAL_AUTOSAVE_KEY;
     if (!isValidAutosavedGame(SafeStorage.get<unknown>(key, null))) SafeStorage.set(key, legacy);
     if (!SafeStorage.get<string | null>(ACTIVE_AUTOSAVE_KIND_KEY, null)) {
       SafeStorage.set(ACTIVE_AUTOSAVE_KIND_KEY, legacy.isDaily ? 'daily' : 'normal');
     }
+    if (
+      legacy.isDaily && isValidDailyDate(legacy.dailyDate) &&
+      !isValidDailyDate(SafeStorage.get<string | null>(ACTIVE_DAILY_DATE_KEY, null))
+    ) {
+      SafeStorage.set(ACTIVE_DAILY_DATE_KEY, legacy.dailyDate);
+    }
   }
   SafeStorage.remove(LEGACY_AUTOSAVE_KEY);
+
+  const legacyDaily = SafeStorage.get<unknown>(DAILY_AUTOSAVE_KEY, null);
+  if (isValidAutosavedGame(legacyDaily) && legacyDaily.isDaily && isValidDailyDate(legacyDaily.dailyDate)) {
+    const key = dailyAutosaveKey(legacyDaily.dailyDate);
+    if (!isValidAutosavedGame(SafeStorage.get<unknown>(key, null))) SafeStorage.set(key, legacyDaily);
+    if (!SafeStorage.get<string | null>(ACTIVE_DAILY_DATE_KEY, null)) {
+      SafeStorage.set(ACTIVE_DAILY_DATE_KEY, legacyDaily.dailyDate);
+    }
+  }
+  SafeStorage.remove(DAILY_AUTOSAVE_KEY);
 }
 
-function readAutosave(isDaily: boolean): GameState | null {
-  const key = isDaily ? DAILY_AUTOSAVE_KEY : NORMAL_AUTOSAVE_KEY;
+function readAutosave(isDaily: boolean, dailyDate?: string): GameState | null {
+  const resolvedDate = dailyDate || SafeStorage.get<string | null>(ACTIVE_DAILY_DATE_KEY, null);
+  const key = isDaily
+    ? isValidDailyDate(resolvedDate) ? dailyAutosaveKey(resolvedDate) : DAILY_AUTOSAVE_KEY
+    : NORMAL_AUTOSAVE_KEY;
   const saved = SafeStorage.get<unknown>(key, null);
   if (saved === null) return null;
-  if (!isValidAutosavedGame(saved) || saved.ended || saved.won || saved.isDaily !== isDaily) {
+  if (
+    !isValidAutosavedGame(saved) || saved.ended || saved.won || saved.isDaily !== isDaily ||
+    (isDaily && isValidDailyDate(resolvedDate) && saved.dailyDate !== resolvedDate)
+  ) {
     SafeStorage.remove(key);
     return null;
   }
@@ -392,9 +434,14 @@ export function loadAutosavedGame(): GameState | null {
   return readAutosave(false);
 }
 
-export function loadAutosavedDailyGame(): GameState | null {
+export function loadAutosavedDailyGame(dailyDate?: string): GameState | null {
   migrateLegacyAutosave();
-  return readAutosave(true);
+  const saved = readAutosave(true, dailyDate);
+  if (saved && isValidDailyDate(saved.dailyDate)) {
+    SafeStorage.set(ACTIVE_DAILY_DATE_KEY, saved.dailyDate);
+    SafeStorage.set(ACTIVE_AUTOSAVE_KIND_KEY, 'daily');
+  }
+  return saved;
 }
 
 export function loadActiveAutosavedGame(): GameState | null {
@@ -404,13 +451,26 @@ export function loadActiveAutosavedGame(): GameState | null {
   return preferred || (kind === 'daily' ? readAutosave(false) : readAutosave(true));
 }
 
-export function clearAutosavedGame(isDaily = false): void {
+export function clearAutosavedGame(isDaily = false, dailyDate?: string): void {
   const clearedKind = isDaily ? 'daily' : 'normal';
-  SafeStorage.remove(isDaily ? DAILY_AUTOSAVE_KEY : NORMAL_AUTOSAVE_KEY);
+  const activeDailyDate = SafeStorage.get<string | null>(ACTIVE_DAILY_DATE_KEY, null);
+  const dateToClear = isDaily
+    ? isValidDailyDate(dailyDate) ? dailyDate : activeDailyDate
+    : null;
+  SafeStorage.remove(
+    isDaily
+      ? isValidDailyDate(dateToClear) ? dailyAutosaveKey(dateToClear) : DAILY_AUTOSAVE_KEY
+      : NORMAL_AUTOSAVE_KEY
+  );
   const activeKind = SafeStorage.get<string | null>(ACTIVE_AUTOSAVE_KIND_KEY, null);
-  if (activeKind === clearedKind) {
+  const clearingActiveDaily = !isDaily || !isValidDailyDate(dailyDate) || activeDailyDate === dailyDate;
+  if (activeKind === clearedKind && clearingActiveDaily) {
     const alternate = isDaily ? readAutosave(false) : readAutosave(true);
-    if (alternate) SafeStorage.set(ACTIVE_AUTOSAVE_KIND_KEY, isDaily ? 'normal' : 'daily');
-    else SafeStorage.remove(ACTIVE_AUTOSAVE_KIND_KEY);
+    if (alternate) {
+      SafeStorage.set(ACTIVE_AUTOSAVE_KIND_KEY, isDaily ? 'normal' : 'daily');
+    } else {
+      SafeStorage.remove(ACTIVE_AUTOSAVE_KIND_KEY);
+    }
+    if (isDaily) SafeStorage.remove(ACTIVE_DAILY_DATE_KEY);
   }
 }

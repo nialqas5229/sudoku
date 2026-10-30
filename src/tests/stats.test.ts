@@ -105,17 +105,37 @@ describe('Statistics aggregation and persistence', () => {
   it('keeps normal and Daily Puzzle autosaves separate and removes only the completed type', () => {
     mockLocalStorage();
     const normal = createNewGameState({ size: 4, difficulty: 'easy', mode: 'standard', timeLimit: 0, seed: 'normal' });
-    const daily = createNewGameState({ size: 4, difficulty: 'easy', mode: 'standard', timeLimit: 0, seed: 'daily', isDaily: true, dailyDate: getTodayDateString() });
+    const today = getTodayDateString();
+    const yesterday = new Date(Date.parse(`${today}T00:00:00Z`) - 86400000).toISOString().slice(0, 10);
+    const oldDaily = createNewGameState({ size: 4, difficulty: 'easy', mode: 'standard', timeLimit: 0, seed: 'daily-old', isDaily: true, dailyDate: yesterday });
+    const daily = createNewGameState({ size: 4, difficulty: 'easy', mode: 'standard', timeLimit: 0, seed: 'daily', isDaily: true, dailyDate: today });
     saveAutosavedGame(normal);
+    saveAutosavedGame(oldDaily);
     saveAutosavedGame(daily);
 
     expect(loadAutosavedGame()?.id).toBe(normal.id);
     expect(loadAutosavedDailyGame()?.id).toBe(daily.id);
     expect(loadActiveAutosavedGame()?.id).toBe(daily.id);
-    clearAutosavedGame(true);
-    expect(loadAutosavedDailyGame()).toBe(null);
+    expect(loadAutosavedDailyGame(yesterday)?.id).toBe(oldDaily.id);
+    expect(loadActiveAutosavedGame()?.id).toBe(oldDaily.id);
+    clearAutosavedGame(true, today);
+    expect(loadAutosavedDailyGame(today)).toBe(null);
+    expect(loadAutosavedDailyGame(yesterday)?.id).toBe(oldDaily.id);
     expect(loadAutosavedGame()?.id).toBe(normal.id);
+    expect(loadActiveAutosavedGame()?.id).toBe(oldDaily.id);
+    clearAutosavedGame(true, yesterday);
     expect(loadActiveAutosavedGame()?.id).toBe(normal.id);
+  });
+
+  it('migrates the legacy daily autosave into its date-specific slot', () => {
+    const storage = mockLocalStorage();
+    const date = getTodayDateString();
+    const daily = createNewGameState({ size: 4, difficulty: 'hard', mode: 'standard', timeLimit: 0, seed: 'old-daily', isDaily: true, dailyDate: date });
+    storage.set('sudoku_v2_daily_autosave_state', JSON.stringify(daily));
+
+    expect(loadAutosavedDailyGame(date)?.id).toBe(daily.id);
+    expect(storage.has(`sudoku_v2_daily_autosave_${date}`)).toBe(true);
+    expect(storage.has('sudoku_v2_daily_autosave_state')).toBe(false);
   });
 
   it('ignores and removes malformed or completed autosaves', () => {

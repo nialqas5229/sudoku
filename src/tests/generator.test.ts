@@ -1,4 +1,4 @@
-import { generatePuzzle, parseCustomPuzzleString } from '../core/generator';
+import { generateDailyPuzzle, generatePuzzle, parseCustomPuzzleString } from '../core/generator';
 import { hasUniqueSolution } from '../core/solver';
 import { isBoardSolved } from '../core/validator';
 import { describe, expect, it } from './test-harness';
@@ -10,6 +10,7 @@ import {
   getDailyStreaks,
   getNextDailyRelease,
   saveDailyCompletion,
+  getTodayDateString,
 } from '../services/daily';
 import { loadStats } from '../services/stats';
 
@@ -44,6 +45,34 @@ describe('Sudoku Generator & Seeded Reproducibility', () => {
     expect(first.solution.join('')).toBe(second.solution.join(''));
   });
 
+  it('generates deterministic daily puzzles and retries away from the previous date puzzle', () => {
+    const first = generateDailyPuzzle('2026-10-30', 9, 'hard');
+    const repeated = generateDailyPuzzle('2026-10-30', 9, 'hard');
+    const previous = generateDailyPuzzle('2026-10-29', 9, 'hard');
+    expect(first.puzzle.join('')).toBe(repeated.puzzle.join(''));
+    expect(first.solution.join('')).toBe(repeated.solution.join(''));
+    expect(first.puzzle.join('') === previous.puzzle.join('')).toBe(false);
+    expect(isBoardSolved(first.solution, undefined, 9)).toBe(true);
+    expect(hasUniqueSolution(first.puzzle, 9)).toBe(true);
+  });
+
+  it('uses the next deterministic seed when a daily puzzle collides with the prior date', () => {
+    const seenSeeds: string[] = [];
+    const fakeGenerator: typeof generatePuzzle = (size = 9, difficulty = 'hard', seed = '') => {
+      const seedValue = seed;
+      seenSeeds.push(seedValue);
+      const puzzle = new Array(size * size).fill(seedValue.includes('retry-1') ? 0 : 1);
+      return { puzzle, solution: new Array(size * size).fill(1), size, difficulty, seed: seedValue, cluesCount: 1 };
+    };
+    const daily = generateDailyPuzzle('2026-10-30', 9, 'hard', fakeGenerator);
+
+    expect(seenSeeds[0]).toBe('DAILY-2026-10-29-hard-9x9');
+    expect(seenSeeds[1]).toBe('DAILY-2026-10-30-hard-9x9');
+    expect(seenSeeds[2]).toBe('DAILY-2026-10-30-hard-9x9-retry-1');
+    expect(daily.seed).toBe('DAILY-2026-10-30-hard-9x9');
+    expect(daily.puzzle.every((value) => value === 0)).toBe(true);
+  });
+
   it('generates valid unique-solution 4x4 and 6x6 mini/midi puzzles', () => {
     const g4 = generatePuzzle(4, 'easy', 'KIDS-4X4');
     expect(g4.puzzle.length).toBe(16);
@@ -71,9 +100,28 @@ describe('Daily puzzle schedule', () => {
     const first = getDailyConfig('2026-10-30');
     const repeated = getDailyConfig('2026-10-30');
     expect(first.seed).toBe(repeated.seed);
-    expect(first.seed).toBe('DAILY-2026-10-30-9x9');
+    expect(first.seed).toBe(`DAILY-2026-10-30-${first.difficulty}-9x9`);
     expect(first.difficulty).toBe(repeated.difficulty);
     expect(first.seed === getDailyConfig('2026-10-31').seed).toBe(false);
+    expect(getDailyConfig('2026-10-30', 9, 'easy').seed).toBe('DAILY-2026-10-30-easy-9x9');
+    expect(getDailyConfig('2026-10-30', 9, 'hard').seed).toBe('DAILY-2026-10-30-hard-9x9');
+  });
+
+  it('accepts completion records saved with the legacy daily puzzle ID', () => {
+    const values = mockLocalStorage();
+    const date = '2026-10-30';
+    values.set('sudoku_v2_daily_completions', JSON.stringify({
+      [date]: {
+        date,
+        puzzleId: `DAILY-${date}-9x9`,
+        completed: true,
+        difficulty: getDailyConfig(date).difficulty,
+        completionTimeSeconds: 100,
+        completedAt: '2026-10-30T18:00:00.000Z',
+        mistakes: 0,
+      },
+    }));
+    expect(getDailyCompletion(date)?.date).toBe(date);
   });
 
   it('counts down to the next Pakistan midnight regardless of browser timezone', () => {
@@ -83,6 +131,11 @@ describe('Daily puzzle schedule', () => {
     expect(countdown.hours).toBe(0);
     expect(countdown.minutes).toBe(0);
     expect(countdown.seconds).toBe(1);
+  });
+
+  it('uses the Asia/Karachi calendar date when UTC is on the previous day', () => {
+    expect(getTodayDateString(Date.parse('2026-10-30T19:00:00.000Z'))).toBe('2026-10-31');
+    expect(getTodayDateString(Date.parse('2026-10-30T18:59:59.000Z'))).toBe('2026-10-30');
   });
 
   it('moves to the following release boundary when Pakistan midnight passes', () => {

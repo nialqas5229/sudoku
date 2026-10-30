@@ -55,7 +55,7 @@ function readDailyCompletionHistory(): DailyCompletionHistory {
     if (
       isValidDailyDate(date) && record && typeof record === 'object' &&
       (record as DailyCompletion).completed === true && (record as DailyCompletion).date === date &&
-      (record as DailyCompletion).puzzleId === getDailyConfig(date).seed &&
+      isKnownDailyPuzzleId(record as DailyCompletion) &&
       ['beginner', 'easy', 'medium', 'hard', 'expert'].includes((record as DailyCompletion).difficulty) &&
       Number.isFinite((record as DailyCompletion).completionTimeSeconds) &&
       (record as DailyCompletion).completionTimeSeconds >= 0 &&
@@ -66,6 +66,14 @@ function readDailyCompletionHistory(): DailyCompletionHistory {
     ) history[date] = record as DailyCompletion;
   }
   return history;
+}
+
+function isKnownDailyPuzzleId(record: DailyCompletion): boolean {
+  const config = getDailyConfig(record.date);
+  // Accept the pre-difficulty-ID format so existing completion records survive migration.
+  const legacyId = `DAILY-${record.date}-9x9`;
+  return record.puzzleId === config.seed ||
+    (record.puzzleId === legacyId && record.difficulty === config.difficulty);
 }
 
 function isValidDailyDate(value: unknown): value is string {
@@ -127,14 +135,14 @@ export function getDailyStreaks(
 
 export function getDailyCompletion(date = getTodayDateString()): DailyCompletion | null {
   const record = readDailyCompletionHistory()[date];
-  return record && record.puzzleId === getDailyConfig(date).seed ? record : null;
+  return record && isKnownDailyPuzzleId(record) ? record : null;
 }
 
 export function saveDailyCompletion(record: DailyCompletion): DailyCompletion {
   const history = readDailyCompletionHistory();
   const existing = history[record.date];
   if (existing) return existing;
-  if (!isValidDailyDate(record.date) || record.puzzleId !== getDailyConfig(record.date).seed) return record;
+  if (!isValidDailyDate(record.date) || !isKnownDailyPuzzleId(record)) return record;
   history[record.date] = record;
   SafeStorage.set(COMPLETIONS_KEY, history);
   return record;
@@ -150,7 +158,11 @@ export function formatDailyCompletionDate(isoDate: string): string {
   }).format(date) + ' PKT';
 }
 
-export function getDailyConfig(dateStr = getTodayDateString(), size: GridSize = 9): {
+export function getDailyConfig(
+  dateStr = getTodayDateString(),
+  size: GridSize = 9,
+  selectedDifficulty?: Difficulty
+): {
   seed: string;
   difficulty: Difficulty;
   dateStr: string;
@@ -168,9 +180,9 @@ export function getDailyConfig(dateStr = getTodayDateString(), size: GridSize = 
     'hard',     // Fri
     'expert',   // Sat
   ];
-  const difficulty = difficultiesByDay[dayOfWeek] || 'medium';
+  const difficulty = selectedDifficulty || difficultiesByDay[dayOfWeek] || 'medium';
   return {
-    seed: `DAILY-${dateStr}-${size}x${size}`,
+    seed: `DAILY-${dateStr}-${difficulty}-${size}x${size}`,
     difficulty,
     dateStr,
     size,

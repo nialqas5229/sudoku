@@ -14,6 +14,7 @@ import {
   undoState,
 } from './core/state';
 import { Difficulty, GameConfig, GameState } from './core/types';
+import { generateDailyPuzzle } from './core/generator';
 import { getCellRuleConflictUnits, getRuleConflictDescriptions } from './core/validator';
 import { audioService } from './services/audio';
 import {
@@ -28,6 +29,7 @@ import { hapticsService } from './services/haptics';
 import { loadSettings, saveSettings, UserSettings } from './services/settings';
 import {
   loadActiveAutosavedGame,
+  loadAutosavedDailyGame,
   loadAutosavedGame,
   recordGameStart,
   recordGameWin,
@@ -359,6 +361,15 @@ function startNewPuzzle(config: GameConfig): void {
       : `New ${state.size}×${state.size} ${DIFFICULTY_LABELS[state.difficulty]} puzzle is ready.`);
     renderAll();
   };
+  const createDailyState = () => {
+    if (!config.isDaily || !config.dailyDate) return createNewGameState(config);
+    const generated = generateDailyPuzzle(config.dailyDate, config.size, config.difficulty);
+    return createNewGameState({
+      ...config,
+      seed: generated.seed,
+      customPuzzle: { puzzle: generated.puzzle, solution: generated.solution },
+    });
+  };
 
   // Use Web Worker for non-blocking generation when no custom puzzle string is passed
   if (generatorWorker && !config.customPuzzle) {
@@ -375,7 +386,7 @@ function startNewPuzzle(config: GameConfig): void {
         });
         applyCreatedState(nextState);
       } else {
-        applyCreatedState(createNewGameState(config));
+        applyCreatedState(createDailyState());
       }
     };
     generatorWorker.addEventListener('message', onMessage);
@@ -384,10 +395,11 @@ function startNewPuzzle(config: GameConfig): void {
       size: config.size,
       difficulty: config.difficulty,
       seed: config.seed,
+      dailyDate: config.isDaily ? config.dailyDate : undefined,
     };
     generatorWorker.postMessage(payload);
   } else {
-    applyCreatedState(createNewGameState(config));
+    applyCreatedState(createDailyState());
   }
 }
 
@@ -401,6 +413,15 @@ function startDailyPuzzle(): void {
   if (pendingDailyDate === daily.dateStr) return;
   if (state?.isDaily && state.dailyDate === daily.dateStr && !state.ended) {
     setBoardStatus(`Resumed today's Daily Challenge (${daily.dateStr}).`);
+    return;
+  }
+  const savedDaily = loadAutosavedDailyGame(daily.dateStr);
+  if (savedDaily) {
+    gameTimer.stop();
+    state = savedDaily;
+    state.paused = state.started;
+    setBoardStatus(`Restored Daily Challenge (${daily.dateStr}). Resume when you're ready.`);
+    renderAll();
     return;
   }
   startNewPuzzle({
@@ -753,6 +774,7 @@ function bootstrap(): void {
     }
   }
 
+  refreshDailyAfterMidnight();
   window.setInterval(refreshDailyAfterMidnight, 30_000);
   document.addEventListener('visibilitychange', refreshDailyAfterMidnight);
   window.addEventListener('pagehide', () => saveAutosavedGame(state));

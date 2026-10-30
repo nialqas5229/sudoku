@@ -86,6 +86,31 @@ export function generatePuzzle(
   };
 }
 
+/** Generate a deterministic daily puzzle, retrying if it matches the prior day's puzzle. */
+export function generateDailyPuzzle(
+  dateStr: string,
+  size: GridSize,
+  difficulty: Difficulty,
+  generate: typeof generatePuzzle = generatePuzzle
+): GeneratedPuzzle {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const previousDate = new Date(Date.UTC(year, month - 1, day - 1)).toISOString().slice(0, 10);
+  const dailySeed = (date: string) => `DAILY-${date}-${difficulty}-${size}x${size}`;
+  const previousPuzzle = generate(size, difficulty, dailySeed(previousDate)).puzzle;
+  const puzzleKey = (puzzle: readonly number[]) => puzzle.join('');
+  const previousKey = puzzleKey(previousPuzzle);
+  const identitySeed = dailySeed(dateStr);
+
+  for (let retry = 0; ; retry++) {
+    const generationSeed = retry === 0 ? identitySeed : `${identitySeed}-retry-${retry}`;
+    const candidate = generate(size, difficulty, generationSeed);
+    if (puzzleKey(candidate.puzzle) !== previousKey) {
+      // Keep the externally visible ID stable even if a collision retry was needed.
+      return { ...candidate, seed: identitySeed };
+    }
+  }
+}
+
 /**
  * Parses and validates an imported puzzle string (16, 36, or 81 characters using 0 or . for blanks).
  */
