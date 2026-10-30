@@ -2,6 +2,7 @@ import { icon } from './icons';
 import { getGridMeta } from '../core/constants';
 import { GameState, GridSize } from '../core/types';
 import { getAllConflictingCells } from '../core/validator';
+import { getBoardHighlightCategories } from '../core/highlighting';
 import { UserSettings } from '../services/settings';
 
 export class BoardView {
@@ -106,11 +107,9 @@ export class BoardView {
     }
     if (isNewGame) {
       this.currentGameId = state.id;
-      this.lastValues = state.board.map((value, index) =>
-        value > 0 ? `V:${value}` : state.notes[index].length > 0
-          ? `N:${state.notes[index].join(',')}:H:0`
-          : 'E'
-      );
+      // The DOM may be newly built (or contain the previous game). Mark every
+      // cell dirty so the render loop paints actual values and notes from state.
+      this.lastValues = new Array(state.board.length).fill('');
     }
 
     const meta = getGridMeta(state.size);
@@ -121,31 +120,15 @@ export class BoardView {
     this.boardEl.parentElement?.classList.toggle('is-paused', state.paused);
     const conflicts = getAllConflictingCells(state.board, state.size);
     const selected = state.selected;
-    // Blocking highlights must never replace the selected cell's normal blue area.
-    // Preserve the user's peer-highlight preference when blocking is disabled.
-    const selectedPeers =
-      selected >= 0 && (settings.highlightPeers || settings.showBlockedCells)
-        ? new Set(meta.peers[selected])
-        : new Set<number>();
-
-    const blueCells = new Set(selectedPeers);
-    if (selected >= 0) blueCells.add(selected);
-
-    const blockedCells = new Set<number>();
-    if (settings.showBlockedCells && selected >= 0 && state.board[selected] > 0) {
-      const digit = state.board[selected];
-      for (let i = 0; i < meta.totalCells; i++) {
-        if (i === selected || state.board[i] !== digit) continue;
-        if (!blueCells.has(i)) blockedCells.add(i);
-        for (const peer of meta.peers[i]) {
-          if (!blueCells.has(peer)) blockedCells.add(peer);
-        }
-      }
-    }
-
-    const highlightDigit =
-      state.activeDigit ||
-      (selected >= 0 && state.board[selected] > 0 ? state.board[selected] : null);
+    const highlightCategories = getBoardHighlightCategories(
+      state.board,
+      state.size,
+      selected,
+      settings.highlightPeers || settings.showBlockedCells,
+      settings.highlightSameDigit || settings.showBlockedCells
+    );
+    const selectedValue = selected >= 0 && state.board[selected] > 0 ? state.board[selected] : null;
+    const noteHighlightDigit = state.activeDigit || selectedValue;
 
     const flashSet = new Set(state.lastCompletedUnits);
 
@@ -157,11 +140,13 @@ export class BoardView {
       const c = meta.cellCol[i];
       const val = state.board[i];
       const isFixed = state.fixed[i];
-      const isSelected = selected === i;
-      const isPeer = selectedPeers.has(i);
-      const isBlockHighlight = blockedCells.has(i);
+      const category = highlightCategories[i];
+      const isSelected = category === 'selected';
+      const isPeer = category === 'selected-region';
+      const isMatchingNumber = category === 'matching-number';
+      const isSameNumberRegion = category === 'same-number-region' || isMatchingNumber;
       const isSameDigit =
-        settings.highlightSameDigit && highlightDigit !== null && val === highlightDigit;
+        settings.highlightSameDigit && selectedValue !== null && val === selectedValue;
       const isHintTarget = state.activeHint?.cellIndex === i;
 
       const hasRuleConflict = conflicts.has(i);
@@ -172,7 +157,8 @@ export class BoardView {
       // Reset dynamic state classes while preserving structural border classes
       el.classList.toggle('fixed', isFixed);
       el.classList.toggle('peer', isPeer);
-      el.classList.toggle('block-highlight', isBlockHighlight);
+      el.classList.toggle('same-number-region', isSameNumberRegion);
+      el.classList.toggle('matching-number', isMatchingNumber);
       el.classList.toggle('same-digit', isSameDigit);
       el.classList.toggle('selected', isSelected);
       el.classList.toggle('hint-target', isHintTarget);
@@ -187,7 +173,7 @@ export class BoardView {
       const renderKey = val
         ? `V:${val}`
         : cellNotes.length > 0
-        ? `N:${cellNotes.join(',')}:H:${highlightDigit || 0}`
+          ? `N:${cellNotes.join(',')}:H:${noteHighlightDigit || 0}`
         : 'E';
 
       const valueChanged = !isNewGame && this.lastValues[i] !== renderKey;
@@ -201,7 +187,7 @@ export class BoardView {
           let notesHtml = '<div class="notes-grid">';
           for (let d = 1; d <= state.size; d++) {
             const hasNote = cellNotes.includes(d);
-            const activeClass = hasNote && highlightDigit === d ? ' active-note' : '';
+            const activeClass = hasNote && noteHighlightDigit === d ? ' active-note' : '';
             notesHtml += `<span class="note-item${activeClass}">${hasNote ? d : ''}</span>`;
           }
           notesHtml += '</div>';

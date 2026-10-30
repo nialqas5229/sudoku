@@ -125,15 +125,21 @@
   font-weight: 800;
 }
 
+/* The renderer assigns one final region category per cell. */
+.cell.same-number-region {
+  background: var(--cell-number-region-bg);
+}
+
+.cell.same-number-region.matching-number {
+  background: var(--cell-matching-number-bg);
+  font-weight: 800;
+}
+
 .cell.peer {
   background: var(--cell-peer-bg);
 }
 
-.cell.block-highlight { background: var(--cell-block-bg); }
-.cell.same-digit.block-highlight { background: var(--cell-block-same-bg); }
-
 .cell.same-digit {
-  background: var(--cell-same-bg);
   font-weight: 800;
 }
 
@@ -141,6 +147,12 @@
   background: var(--cell-selected-bg);
   box-shadow: inset 0 0 0 2.5px var(--cell-selected-ring);
   z-index: 2;
+}
+
+.cell.peer,
+.cell.same-number-region,
+.cell.selected {
+  color: var(--cell-highlight-ink);
 }
 
 
@@ -205,7 +217,7 @@
 }
 
 .note-item.active-note {
-  color: var(--primary);
+  color: var(--note-active-ink);
   font-weight: 800;
 }
 
